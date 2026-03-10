@@ -120,7 +120,7 @@ export default function HomePage() {
           onToggleLeague={toggleLeague}
           selectedSport={selectedSport}
           onChangeSport={setSport}
-          rightSlot={<TeamSearch />}
+          rightSlot={<TeamSearch games={games} />}
         />
       </div>
 
