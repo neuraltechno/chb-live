@@ -162,31 +162,67 @@ export default function PublicProfilePage() {
               <h2 className="text-sm font-semibold text-white">
                 Favorite Teams
               </h2>
+              <span className="text-[10px] text-dark-500 bg-dark-800 px-2 py-0.5 rounded-full ml-auto">
+                {profile.favoriteTeams.length}/3
+              </span>
             </div>
             <div className="px-5 py-5">
-              <div className="flex flex-wrap gap-2">
-                {profile.favoriteTeams.map((team) => (
-                  <div
-                    key={team.teamId}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-dark-800/60 border border-dark-700/30"
-                  >
-                    {team.logo && (
-                      <img
-                        src={team.logo}
-                        alt={team.name}
-                        className="w-6 h-6 object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    )}
-                    <div>
-                      <p className="text-sm font-medium text-dark-200">
-                        {team.name}
-                      </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {profile.favoriteTeams.map((team, i) => {
+                  const sportColor: Record<string, string> = {
+                    soccer: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
+                    ncaa_football: "bg-orange-500/15 text-orange-400 border-orange-500/20",
+                    ncaa_basketball: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+                  };
+                  const sportLabel: Record<string, string> = {
+                    soccer: "Soccer",
+                    ncaa_football: "NCAAF",
+                    ncaa_basketball: "NCAAB",
+                  };
+                  return (
+                    <div
+                      key={team.teamId}
+                      className="relative flex flex-col items-center gap-2 p-4 rounded-xl bg-dark-800/60 border border-dark-700/30 text-center"
+                    >
+                      {/* Rank */}
+                      <span className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-[10px] font-bold text-dark-900 z-10">
+                        {i + 1}
+                      </span>
+
+                      {team.logo ? (
+                        <img
+                          src={team.logo}
+                          alt={team.name}
+                          className="w-12 h-12 object-contain rounded-lg bg-dark-700/50 p-1.5"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-dark-700 flex items-center justify-center">
+                          <span className="text-lg font-bold text-dark-400">
+                            {team.shortName.slice(0, 2)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div>
+                        <p className="text-sm font-semibold text-dark-100 leading-tight">
+                          {team.name}
+                        </p>
+                        {team.sport && (
+                          <span
+                            className={`mt-1 inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                              sportColor[team.sport] ?? "bg-dark-700 text-dark-400 border-dark-600"
+                            }`}
+                          >
+                            {sportLabel[team.sport] ?? team.sport}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>
