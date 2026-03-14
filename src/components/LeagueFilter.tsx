@@ -6,6 +6,7 @@ import { Trophy, Dribbble, GraduationCap, Filter, X } from "lucide-react";
 interface LeagueFilterProps {
   selectedLeagues: string[];
   onToggleLeague: (leagueId: string) => void;
+  onClearLeagues: () => void;
   selectedSport: SportType | "all";
   onChangeSport: (sport: SportType | "all") => void;
   rightSlot?: React.ReactNode;
@@ -37,6 +38,7 @@ const sportTabs: { id: SportType | "all"; label: string; icon: React.ReactNode }
 export default function LeagueFilter({
   selectedLeagues,
   onToggleLeague,
+  onClearLeagues,
   selectedSport,
   onChangeSport,
   rightSlot,
@@ -99,7 +101,7 @@ export default function LeagueFilter({
         })}
         {selectedLeagues.length > 0 && (
           <button
-            onClick={() => selectedLeagues.forEach(onToggleLeague)}
+            onClick={onClearLeagues}
             className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs text-dark-500 hover:text-dark-300 transition-colors"
           >
             <Filter className="w-3 h-3" />

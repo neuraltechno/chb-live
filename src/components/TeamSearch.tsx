@@ -19,7 +19,8 @@ interface TeamSuggestion {
 }
 
 export default function TeamSearch({ games = [] }: TeamSearchProps) {
-  const { teamSearch, setTeamSearch } = useGameStore();
+  const teamSearch = useGameStore((s) => s.teamSearch);
+  const setTeamSearch = useGameStore((s) => s.setTeamSearch);
   const [isFocused, setIsFocused] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 

@@ -10,13 +10,12 @@ import { RefreshCw, Zap, TrendingUp, Globe } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 export default function HomePage() {
-  const {
-    selectedSport,
-    selectedLeagues,
-    teamSearch,
-    setSport,
-    toggleLeague,
-  } = useGameStore();
+  const selectedSport = useGameStore((s) => s.selectedSport);
+  const selectedLeagues = useGameStore((s) => s.selectedLeagues);
+  const teamSearch = useGameStore((s) => s.teamSearch);
+  const setSport = useGameStore((s) => s.setSport);
+  const toggleLeague = useGameStore((s) => s.toggleLeague);
+  const clearSelectedLeagues = useGameStore((s) => s.clearSelectedLeagues);
 
   const {
     games,
@@ -118,6 +117,7 @@ export default function HomePage() {
         <LeagueFilter
           selectedLeagues={selectedLeagues}
           onToggleLeague={toggleLeague}
+          onClearLeagues={clearSelectedLeagues}
           selectedSport={selectedSport}
           onChangeSport={setSport}
           rightSlot={<TeamSearch games={games} />}

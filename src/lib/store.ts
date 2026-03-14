@@ -11,6 +11,7 @@ interface GameStore {
   teamSearch: string;
   setSport: (sport: SportType | "all") => void;
   toggleLeague: (leagueId: string) => void;
+  clearSelectedLeagues: () => void;
   setSelectedGame: (game: Game | null) => void;
   setTeamSearch: (query: string) => void;
   clearFilters: () => void;
@@ -29,6 +30,7 @@ export const useGameStore = create<GameStore>((set) => ({
         ? state.selectedLeagues.filter((id) => id !== leagueId)
         : [...state.selectedLeagues, leagueId],
     })),
+  clearSelectedLeagues: () => set({ selectedLeagues: [] }),
   setSelectedGame: (game) => set({ selectedGame: game }),
   setTeamSearch: (query) => set({ teamSearch: query }),
   clearFilters: () => set({ selectedSport: "all", selectedLeagues: [], teamSearch: "" }),

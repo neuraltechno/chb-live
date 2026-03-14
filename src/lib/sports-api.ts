@@ -27,6 +27,12 @@ const espnApi = axios.create({
   timeout: 15000,
 });
 
+const SPORT_DATE_WINDOWS: Record<SportType, { pastDays: number; futureDays: number }> = {
+  soccer: { pastDays: 2, futureDays: 3 },
+  ncaa_football: { pastDays: 1, futureDays: 2 },
+  ncaa_basketball: { pastDays: 1, futureDays: 2 },
+};
+
 // ---------- Status Mapping ----------
 
 function mapEspnStatus(state: string): GameStatus {
@@ -77,14 +83,15 @@ async function fetchEspnGames(
   if (!slug) return [];
 
   try {
-    const params: Record<string, any> = { limit: 100 };
+    const params: Record<string, any> = { limit: 50 };
     const response = await espnApi.get(`/${slug}/scoreboard`, { params });
     const events = response.data?.events || [];
 
-    // Build date offsets: past 14 days + next 5 days
+    // Build date offsets with a narrow window to keep response times low
+    const window = SPORT_DATE_WINDOWS[sport];
     const today = new Date();
     const dateOffsets: number[] = [];
-    for (let d = -14; d <= 5; d++) {
+    for (let d = -window.pastDays; d <= window.futureDays; d++) {
       if (d !== 0) dateOffsets.push(d); // skip today — already fetched above
     }
 
@@ -93,7 +100,7 @@ async function fetchEspnGames(
       date.setDate(date.getDate() + dayOffset);
       const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
       return espnApi
-        .get(`/${slug}/scoreboard`, { params: { dates: dateStr, limit: 50 } })
+        .get(`/${slug}/scoreboard`, { params: { dates: dateStr, limit: 40 } })
         .then((res) => res.data?.events || [])
         .catch(() => []);
     });

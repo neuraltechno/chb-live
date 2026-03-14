@@ -1,12 +1,13 @@
 "use client";
 
+import { memo } from "react";
 import { Game, MatchCardProps } from "@/types";
 import LiveBadge from "./LiveBadge";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { MessageSquare, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export default function MatchCard({ game, onClick }: MatchCardProps) {
+function MatchCard({ game, onClick }: MatchCardProps) {
   const router = useRouter();
 
   const isLive = game.status === "live" || game.status === "halftime";
@@ -184,3 +185,5 @@ export default function MatchCard({ game, onClick }: MatchCardProps) {
     </button>
   );
 }
+
+export default memo(MatchCard);
