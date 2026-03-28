@@ -18,6 +18,7 @@ const sportTabs: { id: SportType | "all"; label: string; icon: React.ReactNode }
     label: "All",
     icon: <Trophy className="w-4 h-4" />,
   },
+  /*
   {
     id: "soccer",
     label: "Soccer",
@@ -33,6 +34,7 @@ const sportTabs: { id: SportType | "all"; label: string; icon: React.ReactNode }
     label: "NCAAB",
     icon: <GraduationCap className="w-4 h-4" />,
   },
+  */
   {
     id: "afl",
     label: "AFL",

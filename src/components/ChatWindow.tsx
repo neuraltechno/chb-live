@@ -196,6 +196,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
               key={msg._id}
               message={{
                 ...msg,
+                createdAt: msg._creationTime ? new Date(msg._creationTime).toISOString() : new Date().toISOString(),
                 user: {
                   _id: msg.userId,
                   username: msg.username,

@@ -26,7 +26,7 @@ export default defineSchema({
 
   messages: defineTable({
     gameId: v.string(),
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
     username: v.string(),
     userAvatar: v.optional(v.string()),
     content: v.string(),
@@ -84,4 +84,10 @@ export default defineSchema({
   })
     .index("by_gameId", ["gameId"])
     .index("by_userId", ["userId"]),
+
+  cachedStats: defineTable({
+    externalId: v.string(),
+    stats: v.any(),
+    lastFetched: v.number(),
+  }).index("by_externalId", ["externalId"]),
 });

@@ -12,7 +12,7 @@ interface ChatMessageProps {
 }
 
 export default function ChatMessage({ message, isOwnMessage, onClickAvatar, onReply }: ChatMessageProps) {
-  const time = format(parseISO(message.createdAt), "HH:mm");
+  const time = message.createdAt ? format(parseISO(message.createdAt), "HH:mm") : "00:00";
 
   if (message.type === "reaction") {
     return (

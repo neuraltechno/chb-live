@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { action, internalMutation, internalQuery } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import {
   Game,
   GameStatus,
@@ -217,11 +217,11 @@ export const fetchAllGames = action({
   handler: async (ctx, args) => {
     const soccerLeagueIds = args.leagueFilter
       ? SOCCER_LEAGUES.filter((l) => args.leagueFilter!.includes(l.id)).map((l) => l.id)
-      : SOCCER_LEAGUES.map((l) => l.id);
+      : []; // Temporarily disabled: SOCCER_LEAGUES.map((l) => l.id);
 
     const ncaaLeagueIds = args.leagueFilter
       ? NCAA_LEAGUES.filter((l) => args.leagueFilter!.includes(l.id)).map((l) => l.id)
-      : NCAA_LEAGUES.map((l) => l.id);
+      : []; // Temporarily disabled: NCAA_LEAGUES.map((l) => l.id);
 
     const aflLeagueIds = args.leagueFilter
       ? AFL_LEAGUES.filter((l) => args.leagueFilter!.includes(l.id)).map((l) => l.id)
@@ -263,12 +263,96 @@ export const fetchAllGames = action({
   },
 });
 
+export const getCachedStats = internalQuery({
+  args: { externalId: v.string() },
+  handler: async (ctx, { externalId }) => {
+    return await ctx.db
+      .query("cachedStats")
+      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
+      .unique();
+  },
+});
+
+export const saveStatsAndDetectChanges = internalMutation({
+  args: {
+    externalId: v.string(),
+    stats: v.any(),
+    gameId: v.optional(v.string()),
+  },
+  handler: async (ctx, { externalId, stats, gameId }) => {
+    const existing = await ctx.db
+      .query("cachedStats")
+      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
+      .unique();
+
+    if (existing && gameId) {
+      const oldStats = existing.stats;
+
+      // --- Change Detection Logic ---
+      const detectors = [
+        { key: "goals", label: "Goal", icon: "⚽" },
+        { key: "touchdowns", label: "Touchdown", icon: "🏈" },
+        { key: "fieldGoalsMade", label: "Field Goal", icon: "🏀" },
+        { key: "behinds", label: "Behind", icon: "🏉" },
+      ];
+
+      for (const { key, label, icon } of detectors) {
+        const oldHome = parseInt(oldStats.home[key] || "0");
+        const newHome = parseInt(stats.home[key] || "0");
+        const oldAway = parseInt(oldStats.away[key] || "0");
+        const newAway = parseInt(stats.away[key] || "0");
+
+        if (newHome > oldHome) {
+          await ctx.db.insert("messages", {
+            gameId,
+            content: `${icon} ${label}! The home team just scored!`,
+            username: "MatchBot",
+            type: "text",
+          });
+        }
+        if (newAway > oldAway) {
+          await ctx.db.insert("messages", {
+            gameId,
+            content: `${icon} ${label}! The away team just scored!`,
+            username: "MatchBot",
+            type: "text",
+          });
+        }
+      }
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        stats,
+        lastFetched: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("cachedStats", {
+        externalId,
+        stats,
+        lastFetched: Date.now(),
+      });
+    }
+  },
+});
+
 export const fetchGameStats = action({
   args: {
     externalId: v.string(),
     leagueId: v.string(),
+    gameId: v.string(),
   },
   handler: async (ctx, args) => {
+    // 1. Check cache first
+    const cached = await ctx.runQuery(internal.sportsApi.getCachedStats, {
+      externalId: args.externalId,
+    });
+
+    // If cache is fresh (less than 30 seconds old), return it
+    if (cached && Date.now() - cached.lastFetched < 30_000) {
+      return cached.stats;
+    }
+
     const slug = ESPN_SPORT_SLUGS[args.leagueId];
     if (!slug) return null;
 
@@ -276,14 +360,14 @@ export const fetchGameStats = action({
       const url = `https://site.api.espn.com/apis/site/v2/sports/${slug}/summary?event=${args.externalId}`;
       const response = await fetch(url);
       const data = await response.json();
-      
+
       const boxscore = data?.boxscore;
       const teams: any[] = boxscore?.teams || [];
 
       const homeTeam = teams.find((t) => t.homeAway === "home");
       const awayTeam = teams.find((t) => t.homeAway === "away");
 
-      if (!homeTeam || !awayTeam) return null;
+      if (!homeTeam || !awayTeam) return cached?.stats || null;
 
       const homeMap: Record<string, string> = {};
       const awayMap: Record<string, string> = {};
@@ -300,14 +384,26 @@ export const fetchGameStats = action({
         }
       });
 
-      if (Object.keys(homeMap).length === 0 && Object.keys(awayMap).length === 0) {
-        return null;
+      if (
+        Object.keys(homeMap).length === 0 &&
+        Object.keys(awayMap).length === 0
+      ) {
+        return cached?.stats || null;
       }
 
-      return { home: homeMap, away: awayMap };
+      const newStats = { home: homeMap, away: awayMap };
+
+      // 2. Save to cache and detect changes (bot messages)
+      await ctx.runMutation(internal.sportsApi.saveStatsAndDetectChanges, {
+        externalId: args.externalId,
+        stats: newStats,
+        gameId: args.gameId,
+      });
+
+      return newStats;
     } catch (error) {
       console.error("[Stats Action] Error:", error);
-      return null;
+      return cached?.stats || null;
     }
   },
 });

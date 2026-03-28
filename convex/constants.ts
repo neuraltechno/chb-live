@@ -82,8 +82,8 @@ export const AFL_LEAGUES: League[] = [
 ];
 
 export const ALL_LEAGUES: League[] = [
-  ...SOCCER_LEAGUES,
-  ...NCAA_LEAGUES,
+  // ...SOCCER_LEAGUES,
+  // ...NCAA_LEAGUES,
   ...AFL_LEAGUES,
 ];
 

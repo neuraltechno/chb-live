@@ -31,6 +31,16 @@ export const syncGames = internalMutation({
         });
       }
     }
+
+    // Cleanup: Remove any games that are not AFL (since we only want AFL for now)
+    const nonAflGames = await ctx.db
+      .query("cachedGames")
+      .filter((q) => q.neq(q.field("sport"), "afl"))
+      .collect();
+
+    for (const game of nonAflGames) {
+      await ctx.db.delete(game._id);
+    }
   },
 });
 

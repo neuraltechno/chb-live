@@ -168,7 +168,8 @@ const AFL_GROUPS: GroupDef[] = [
     keys: [
       { key: "goals", label: "Goals" },
       { key: "behinds", label: "Behinds" },
-      { key: "totalPoints", label: "Total Points" },
+      { key: "score", label: "Total Points" },
+      { key: "goalAccuracy", label: "Goal Accuracy" },
     ],
   },
   {
@@ -309,6 +310,7 @@ export default function MatchStats({ game }: MatchStatsProps) {
         const result = await fetchStatsAction({
           externalId: game.externalId,
           leagueId: game.league.id,
+          gameId: game.id,
         });
         setRawStats(result as any);
         setHasError(false);
