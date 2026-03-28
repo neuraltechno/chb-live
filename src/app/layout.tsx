@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Providers from "@/components/Providers";
+import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import Navbar from "@/components/Navbar";
 import { Toaster } from "react-hot-toast";
 
@@ -34,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-dark-950 text-white">
-        <Providers>
+        <ConvexClientProvider>
           <Navbar />
           <main className="pt-16 min-h-screen">{children}</main>
           <Toaster
@@ -49,7 +49,7 @@ export default function RootLayout({
               },
             }}
           />
-        </Providers>
+        </ConvexClientProvider>
       </body>
     </html>
   );

@@ -1,26 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
-import { X, Calendar, MessageSquare, Star, Loader2, ExternalLink, MessageCircle } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import {
+  X,
+  Calendar,
+  MessageSquare,
+  Star,
+  Loader2,
+  ExternalLink,
+  MessageCircle,
+} from "lucide-react";
+import { format } from "date-fns";
 import TeamActivityCard from "./TeamActivityCard";
-import { FavoriteTeam, TeamActivity } from "@/types";
 import { useDMStore } from "@/lib/store";
-
-interface UserProfileData {
-  _id: string;
-  username: string;
-  avatar?: string;
-  bio?: string;
-  favoriteTeams: FavoriteTeam[];
-  teamActivity: TeamActivity[];
-  totalMessages: number;
-  joinedAt: string;
-}
+import { api } from "../../convex/_generated/api";
 
 interface UserProfileModalProps {
-  userId: string;
+  userId: any; // Convex ID
   isOpen: boolean;
   onClose: () => void;
 }
@@ -32,40 +29,27 @@ export default function UserProfileModal({
 }: UserProfileModalProps) {
   const router = useRouter();
   const { openDM } = useDMStore();
-  const [profile, setProfile] = useState<UserProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!isOpen || !userId) return;
+  const profile = useQuery(api.users.getById, isOpen ? { id: userId } : "skip");
+  const teamActivity = useQuery(
+    api.users.getTeamActivity,
+    isOpen ? { userId } : "skip"
+  );
 
-    setIsLoading(true);
-    setProfile(null);
-
-    fetch(`/api/profile/${userId}`)
-      .then((res) => res.json())
-      .then((result) => {
-        if (result.success) {
-          setProfile(result.data);
-        }
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, [userId, isOpen]);
+  const isLoading = profile === undefined;
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
-          className="bg-dark-900 border border-dark-700/50 rounded-2xl shadow-2xl w-full max-w-sm pointer-events-auto animate-slide-up overflow-hidden"
+          className="bg-dark-900 border border-dark-700/50 rounded-2xl shadow-2xl w-full max-sm pointer-events-auto animate-slide-up overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {isLoading ? (
@@ -84,31 +68,26 @@ export default function UserProfileModal({
             </div>
           ) : (
             <>
-              {/* Header with close */}
               <div className="relative">
-                {/* Gradient banner */}
                 <div className="h-20 bg-gradient-to-br from-primary-600/30 via-primary-800/20 to-dark-900" />
-
                 <button
                   onClick={onClose}
                   className="absolute top-3 right-3 p-1.5 rounded-lg bg-dark-800/80 border border-dark-700/50 text-dark-400 hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
-
-                {/* Avatar */}
                 <div className="absolute -bottom-8 left-5">
                   <div className="w-16 h-16 rounded-2xl border-4 border-dark-900 overflow-hidden bg-dark-800">
-                    {profile.avatar ? (
+                    {profile.image ? (
                       <img
-                        src={profile.avatar}
+                        src={profile.image}
                         alt={profile.username}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-primary-600/20">
                         <span className="text-xl font-bold text-primary-400">
-                          {profile.username.charAt(0).toUpperCase()}
+                          {profile.username?.charAt(0).toUpperCase()}
                         </span>
                       </div>
                     )}
@@ -116,7 +95,6 @@ export default function UserProfileModal({
                 </div>
               </div>
 
-              {/* User info */}
               <div className="px-5 pt-11 pb-4">
                 <h3 className="text-base font-bold text-white">
                   {profile.username}
@@ -126,23 +104,16 @@ export default function UserProfileModal({
                     {profile.bio}
                   </p>
                 )}
-
-                {/* Stats row */}
                 <div className="flex items-center gap-4 mt-3">
-                  <div className="flex items-center gap-1.5 text-xs text-dark-400">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>{profile.totalMessages} messages</span>
-                  </div>
                   <div className="flex items-center gap-1.5 text-xs text-dark-400">
                     <Calendar className="w-3.5 h-3.5" />
                     <span>
-                      Joined {format(parseISO(profile.joinedAt), "MMM yyyy")}
+                      Joined {format(new Date(profile._creationTime), "MMM yyyy")}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Favorite Teams */}
               {profile.favoriteTeams && profile.favoriteTeams.length > 0 && (
                 <div className="px-5 pb-3">
                   <h4 className="text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-2">
@@ -150,7 +121,7 @@ export default function UserProfileModal({
                     Favorite Teams
                   </h4>
                   <div className="flex gap-2">
-                    {profile.favoriteTeams.map((team) => (
+                    {profile.favoriteTeams.map((team: any) => (
                       <div
                         key={team.teamId}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-dark-800/60 border border-dark-700/30 text-xs"
@@ -160,9 +131,6 @@ export default function UserProfileModal({
                             src={team.logo}
                             alt={team.name}
                             className="w-4 h-4 object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                            }}
                           />
                         )}
                         <span className="text-dark-300">{team.shortName}</span>
@@ -172,20 +140,18 @@ export default function UserProfileModal({
                 </div>
               )}
 
-              {/* Top Active Chats */}
-              {profile.teamActivity && profile.teamActivity.length > 0 && (
+              {teamActivity && teamActivity.length > 0 && (
                 <div className="px-5 pb-4">
                   <h4 className="text-[10px] font-bold text-dark-500 uppercase tracking-widest mb-2">
                     Most Active Chats
                   </h4>
                   <TeamActivityCard
-                    activity={profile.teamActivity}
+                    activity={teamActivity as any}
                     isOwnProfile={false}
                   />
                 </div>
               )}
 
-              {/* Actions */}
               <div className="px-5 pb-5 flex gap-2.5">
                 <button
                   onClick={() => {

@@ -1,53 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { SignInButton, UserButton, useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import {
   Gamepad2,
   User,
-  LogOut,
   MessageSquare,
   Menu,
   X,
-  ChevronDown,
-  Settings,
   MessageCircle,
 } from "lucide-react";
 import { useDMStore } from "@/lib/store";
 import DMPanel from "./DMPanel";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 export default function Navbar() {
-  const { data: session, status } = useSession();
+  const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const user = session?.user as any;
-  const { isDMOpen, openDM, closeDM, totalUnread, setTotalUnread } = useDMStore();
+  const { isDMOpen, openDM, closeDM } = useDMStore();
 
-  // Poll for unread DM count every 30s
-  useEffect(() => {
-    if (!session) return;
-    const fetchUnread = () => {
-      fetch("/api/dm/conversations")
-        .then((r) => r.json())
-        .then((res) => {
-          if (res.success) {
-            const total = res.data.reduce(
-              (s: number, c: any) => s + (c.unreadCount || 0),
-              0
-            );
-            setTotalUnread(total);
-          }
-        })
-        .catch(() => {});
-    };
-    fetchUnread();
-    const id = setInterval(fetchUnread, 30_000);
-    return () => clearInterval(id);
-  }, [session, setTotalUnread]);
+  // Fetch unread DM count from Convex
+  const conversations = useQuery(api.conversations.list) || [];
+  const totalUnread = conversations.reduce(
+    (s, c) => s + (c.unreadCount || 0),
+    0
+  );
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/95 backdrop-blur-md border-b border-dark-700/50">
@@ -80,9 +62,9 @@ export default function Navbar() {
 
           {/* Auth Section */}
           <div className="flex items-center gap-3">
-            {status === "loading" ? (
+            {!isLoaded ? (
               <div className="w-8 h-8 rounded-full bg-dark-700 animate-pulse" />
-            ) : session ? (
+            ) : isSignedIn ? (
               <>
                 {/* DM Button */}
                 <button
@@ -98,75 +80,24 @@ export default function Navbar() {
                   )}
                 </button>
 
-                {/* Profile Dropdown */}
-                <div className="relative">
-                <button
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 border border-dark-600/50 transition-all"
+                {/* Profile Button */}
+                <Link
+                  href="/profile"
+                  className="p-2 rounded-lg text-dark-400 hover:text-white hover:bg-dark-800 transition-all"
+                  title="Profile Settings"
                 >
-                  {user?.avatar || user?.image ? (
-                    <img
-                      src={user.avatar || user.image}
-                      alt={user.username || user.name}
-                      className="w-6 h-6 rounded-full"
-                    />
-                  ) : (
-                    <User className="w-5 h-5 text-primary-400" />
-                  )}
-                  <span className="text-sm text-dark-200 hidden sm:inline">
-                    {user?.username || user?.name}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-dark-400" />
-                </button>
+                  <User className="w-5 h-5" />
+                </Link>
 
-                {isProfileOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setIsProfileOpen(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-48 bg-dark-800 border border-dark-600/50 rounded-xl shadow-xl z-50 overflow-hidden animate-slide-down">
-                      <div className="px-4 py-3 border-b border-dark-700">
-                        <p className="text-sm font-medium text-white">
-                          {user?.username || user?.name}
-                        </p>
-                        <p className="text-xs text-dark-400 truncate">
-                          {user?.email}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          router.push("/profile");
-                          setIsProfileOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-dark-200 hover:bg-dark-700/50 transition-colors"
-                      >
-                        <Settings className="w-4 h-4" />
-                        Profile & Settings
-                      </button>
-                      <button
-                        onClick={() => {
-                          signOut();
-                          setIsProfileOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-dark-700/50 transition-colors"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Sign Out
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+                <UserButton afterSignOutUrl="/" />
               </>
             ) : (
-              <button
-                onClick={() => router.push("/auth")}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium transition-all hover:shadow-lg hover:shadow-primary-600/25"
-              >
-                <User className="w-4 h-4" />
-                <span>Sign In</span>
-              </button>
+              <SignInButton mode="modal">
+                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium transition-all hover:shadow-lg hover:shadow-primary-600/25">
+                  <User className="w-4 h-4" />
+                  <span>Sign In</span>
+                </button>
+              </SignInButton>
             )}
 
             {/* Mobile menu toggle */}

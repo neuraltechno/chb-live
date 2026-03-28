@@ -1,58 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Game } from "@/types";
 import ChatWindow from "@/components/ChatWindow";
 import LiveBadge from "@/components/LiveBadge";
-import { ArrowLeft, ExternalLink, MapPin, Calendar, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  MapPin,
+  Calendar,
+  Loader2,
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
 import MatchStats from "@/components/MatchStats";
+import { useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 
 export default function MatchPage() {
   const params = useParams();
   const router = useRouter();
   const gameId = params.id as string;
 
-  const [game, setGame] = useState<Game | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Fetch the specific game
-    fetch("/api/games")
-      .then((res) => res.json())
-      .then((result) => {
-        if (result.success) {
-          const found = result.data.games.find(
-            (g: Game) => g.id === gameId
-          );
-          if (found) {
-            setGame(found);
-          }
-        }
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-
-    // Refresh game data every 5 minutes (matches server cache)
-    const interval = setInterval(() => {
-      fetch("/api/games")
-        .then((res) => res.json())
-        .then((result) => {
-          if (result.success) {
-            const found = result.data.games.find(
-              (g: Game) => g.id === gameId
-            );
-            if (found) {
-              setGame(found);
-            }
-          }
-        })
-        .catch(console.error);
-    }, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, [gameId]);
+  const game = useQuery(api.games.get, { id: gameId });
+  const isLoading = game === undefined;
 
   if (isLoading) {
     return (
@@ -65,11 +33,9 @@ export default function MatchPage() {
   if (!game) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <h2 className="text-xl font-semibold text-dark-300">
-          Match not found
-        </h2>
+        <h2 className="text-xl font-semibold text-dark-300">Match not found</h2>
         <p className="text-sm text-dark-500">
-          This match may have ended or doesn&apos;t exist.
+          This match may have ended or doesn't exist.
         </p>
         <button
           onClick={() => router.push("/")}
@@ -87,9 +53,7 @@ export default function MatchPage() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Left Panel - Match Info */}
       <div className="lg:w-[420px] xl:w-[480px] flex-shrink-0 bg-dark-900 border-r border-dark-700/50 overflow-y-auto lg:h-screen">
-        {/* Back Button */}
         <div className="px-4 py-3 border-b border-dark-700/50">
           <button
             onClick={() => router.push("/")}
@@ -100,139 +64,65 @@ export default function MatchPage() {
           </button>
         </div>
 
-        {/* Match Header */}
-        <div
-          className={`relative overflow-hidden ${
-            isLive ? "bg-gradient-to-b from-red-950/20 to-transparent" : ""
-          }`}
-        >
-          {isLive && (
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-red-400 to-red-500" />
-          )}
+        <div className={`relative overflow-hidden ${isLive ? "bg-gradient-to-b from-red-950/20 to-transparent" : ""}`}>
+          {isLive && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-red-400 to-red-500" />}
 
           <div className="px-6 py-6">
-            {/* League */}
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-dark-400 uppercase tracking-wider">
-                  {game.league.name}
-                </span>
-              </div>
+              <span className="text-xs font-medium text-dark-400 uppercase tracking-wider">{game.league.name}</span>
               <LiveBadge status={game.status} minute={game.minute} />
             </div>
 
-            {/* Round / Leg / Series */}
             {(game.round || game.leg || game.seriesNote) && (
               <div className="flex flex-wrap items-center gap-2 mb-5">
-                {game.round && (
-                  <span className="text-[11px] font-medium text-primary-400 bg-primary-500/10 px-2 py-1 rounded-md">
-                    {game.round}
-                  </span>
-                )}
-                {game.leg && (
-                  <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md">
-                    {game.leg}
-                  </span>
-                )}
-                {game.seriesNote && (
-                  <span className="text-[11px] text-dark-400">
-                    {game.seriesNote}
-                  </span>
-                )}
+                {game.round && <span className="text-[11px] font-medium text-primary-400 bg-primary-500/10 px-2 py-1 rounded-md">{game.round}</span>}
+                {game.leg && <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md">{game.leg}</span>}
+                {game.seriesNote && <span className="text-[11px] text-dark-400">{game.seriesNote}</span>}
               </div>
             )}
 
-            {/* Teams & Score */}
             <div className="flex items-center justify-between gap-4">
-              {/* Home Team */}
               <div className="flex-1 flex flex-col items-center text-center">
                 <div className="w-16 h-16 rounded-2xl bg-dark-800 border border-dark-700/50 flex items-center justify-center overflow-hidden mb-3">
                   {game.homeTeam.logo ? (
-                    <img
-                      src={game.homeTeam.logo}
-                      alt={game.homeTeam.name}
-                      className="w-10 h-10 object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
+                    <img src={game.homeTeam.logo} alt={game.homeTeam.name} className="w-10 h-10 object-contain" />
                   ) : (
-                    <span className="text-lg font-bold text-dark-400">
-                      {game.homeTeam.shortName.slice(0, 3)}
-                    </span>
+                    <span className="text-lg font-bold text-dark-400">{game.homeTeam.shortName.slice(0, 3)}</span>
                   )}
                 </div>
-                <h3 className="text-sm font-semibold text-white leading-tight">
-                  {game.homeTeam.name}
-                </h3>
+                <h3 className="text-sm font-semibold text-white leading-tight">{game.homeTeam.name}</h3>
                 <span className="text-[11px] text-dark-500 mt-0.5">Home</span>
               </div>
 
-              {/* Score */}
               <div className="flex flex-col items-center">
-                {game.homeTeam.score !== undefined &&
-                game.awayTeam.score !== undefined ? (
+                {game.homeTeam.score !== undefined && game.awayTeam.score !== undefined ? (
                   <div className="flex items-center gap-3">
-                    <span
-                      className={`text-4xl font-bold tabular-nums ${
-                        isLive ? "text-white" : "text-dark-300"
-                      }`}
-                    >
-                      {game.homeTeam.score}
-                    </span>
+                    <span className={`text-4xl font-bold tabular-nums ${isLive ? "text-white" : "text-dark-300"}`}>{game.homeTeam.score}</span>
                     <span className="text-lg text-dark-600">:</span>
-                    <span
-                      className={`text-4xl font-bold tabular-nums ${
-                        isLive ? "text-white" : "text-dark-300"
-                      }`}
-                    >
-                      {game.awayTeam.score}
-                    </span>
+                    <span className={`text-4xl font-bold tabular-nums ${isLive ? "text-white" : "text-dark-300"}`}>{game.awayTeam.score}</span>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <p className="text-lg font-semibold text-dark-300">
-                      {format(startDate, "HH:mm")}
-                    </p>
-                    <p className="text-xs text-dark-500">
-                      {format(startDate, "MMM d, yyyy")}
-                    </p>
+                    <p className="text-lg font-semibold text-dark-300">{format(startDate, "HH:mm")}</p>
+                    <p className="text-xs text-dark-500">{format(startDate, "MMM d, yyyy")}</p>
                   </div>
                 )}
-
-                {isLive && game.minute && (
-                  <span className="mt-2 text-xs text-red-400 font-medium">
-                    {game.minute}&apos;
-                  </span>
-                )}
+                {isLive && game.minute && <span className="mt-2 text-xs text-red-400 font-medium">{game.minute}'</span>}
               </div>
 
-              {/* Away Team */}
               <div className="flex-1 flex flex-col items-center text-center">
                 <div className="w-16 h-16 rounded-2xl bg-dark-800 border border-dark-700/50 flex items-center justify-center overflow-hidden mb-3">
                   {game.awayTeam.logo ? (
-                    <img
-                      src={game.awayTeam.logo}
-                      alt={game.awayTeam.name}
-                      className="w-10 h-10 object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
+                    <img src={game.awayTeam.logo} alt={game.awayTeam.name} className="w-10 h-10 object-contain" />
                   ) : (
-                    <span className="text-lg font-bold text-dark-400">
-                      {game.awayTeam.shortName.slice(0, 3)}
-                    </span>
+                    <span className="text-lg font-bold text-dark-400">{game.awayTeam.shortName.slice(0, 3)}</span>
                   )}
                 </div>
-                <h3 className="text-sm font-semibold text-white leading-tight">
-                  {game.awayTeam.name}
-                </h3>
+                <h3 className="text-sm font-semibold text-white leading-tight">{game.awayTeam.name}</h3>
                 <span className="text-[11px] text-dark-500 mt-0.5">Away</span>
               </div>
             </div>
 
-            {/* Match Details */}
             <div className="mt-6 pt-4 border-t border-dark-700/50 space-y-2">
               {game.venue && (
                 <div className="flex items-center gap-2 text-xs text-dark-400">
@@ -248,27 +138,21 @@ export default function MatchPage() {
           </div>
         </div>
 
-        {/* Match Statistics */}
         <MatchStats game={game} />
 
-        {/* Chat instructions */}
         <div className="px-6 py-4 border-t border-dark-700/50">
           <div className="flex items-start gap-3 bg-dark-800/50 rounded-xl p-4 border border-dark-700/30">
             <span className="text-xl">💬</span>
             <div>
-              <h4 className="text-sm font-medium text-dark-200 mb-1">
-                Match Chat
-              </h4>
+              <h4 className="text-sm font-medium text-dark-200 mb-1">Match Chat</h4>
               <p className="text-xs text-dark-400 leading-relaxed">
-                Share your thoughts, reactions, and predictions with other fans
-                watching this game. Sign in to participate!
+                Share your thoughts, reactions, and predictions with other fans watching this game. Sign in to participate!
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right Panel - Chat */}
       <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] relative">
         <ChatWindow gameId={gameId} game={game} />
       </div>

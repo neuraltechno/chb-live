@@ -4,14 +4,16 @@
   "private": true,
   "description": "Gamebloc - Real-time sports chat platform",
   "scripts": {
-    "dev": "node server.js",
+    "dev": "next dev",
     "build": "next build",
-    "start": "NODE_ENV=production node server.js",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^5.7.5",
     "axios": "^1.7.0",
     "bcryptjs": "^2.4.3",
+    "convex": "^1.34.1",
     "date-fns": "^3.6.0",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.400.0",
@@ -25,6 +27,7 @@
     "react-hot-toast": "^2.4.0",
     "socket.io": "^4.7.0",
     "socket.io-client": "^4.7.0",
+    "svix": "^1.89.0",
     "zustand": "^4.5.0"
   },
   "devDependencies": {

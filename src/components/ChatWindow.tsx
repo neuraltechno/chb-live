@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { Game, Message, SOCKET_EVENTS } from "@/types";
-import { useSocket } from "@/hooks/useSocket";
-import { useChatStore } from "@/lib/store";
+import { Game, Message } from "@/types";
 import ChatMessage from "./ChatMessage";
 import UserProfileModal from "./UserProfileModal";
 import {
@@ -18,6 +16,8 @@ import {
   X,
   Reply,
 } from "lucide-react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 const QUICK_REACTIONS = ["⚽", "🔥", "😮", "👏", "😂", "💪", "❤️", "😤"];
 
@@ -27,85 +27,49 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ gameId, game }: ChatWindowProps) {
-  const { data: session } = useSession();
+  const { isLoaded: isUserLoaded, isSignedIn, user: clerkUser } = useUser();
   const router = useRouter();
-
-  const {
-    messages,
-    activeUsers,
-    typingUsers,
-    isLoadingMessages,
-    addMessage,
-    setMessages,
-    setActiveUsers,
-    addTypingUser,
-    removeTypingUser,
-    setLoadingMessages,
-    clearChat,
-  } = useChatStore();
 
   const [inputValue, setInputValue] = useState("");
   const [showReactions, setShowReactions] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const [profileModalUserId, setProfileModalUserId] = useState<string | null>(null);
-  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [profileModalUserId, setProfileModalUserId] = useState<string | null>(
+    null
+  );
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const user = session?.user
-    ? {
-        id: (session.user as any).id,
-        username: (session.user as any).username || session.user.name || "User",
-        avatar: (session.user as any).avatar || session.user.image,
-      }
-    : null;
+  // Convex Queries & Mutations
+  const messages = useQuery(api.messages.list, { gameId, limit: 100 });
+  const sendMessageMutation = useMutation(api.messages.send);
+  const updatePresence = useMutation(api.presence.update);
+  const activeUsersList = useQuery(api.presence.listByGame, { gameId }) || [];
 
-  // Socket connection
-  const { isConnected, sendMessage, startTyping, stopTyping } = useSocket({
-    gameId,
-    user,
-    onNewMessage: (message) => {
-      addMessage(message);
-    },
-    onRoomUsers: (data) => {
-      setActiveUsers(data.count);
-    },
-    onUserJoined: (data) => {
-      setActiveUsers(data.count);
-    },
-    onUserLeft: (data) => {
-      setActiveUsers(data.count);
-    },
-    onUserTyping: (data) => {
-      if (data.isTyping) {
-        addTypingUser(data.username);
-        // Auto-remove after 3 seconds
-        setTimeout(() => removeTypingUser(data.username), 3000);
-      } else {
-        removeTypingUser(data.username);
-      }
-    },
-  });
+  const isLoadingMessages = messages === undefined;
 
-  // Fetch existing messages
+  const typingUsers = useMemo(() => {
+    return activeUsersList
+      .filter((u) => u.isTyping && u.username !== clerkUser?.username)
+      .map((u) => u.username);
+  }, [activeUsersList, clerkUser?.username]);
+
+  // Presence updates
   useEffect(() => {
-    clearChat();
-    setLoadingMessages(true);
+    if (!isSignedIn) return;
 
-    fetch(`/api/messages/${gameId}?limit=100`)
-      .then((res) => res.json())
-      .then((result) => {
-        if (result.success) {
-          setMessages(result.data.messages);
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoadingMessages(false));
+    updatePresence({ gameId });
 
-    return () => clearChat();
-  }, [gameId]);
+    const interval = setInterval(() => {
+      updatePresence({ gameId });
+    }, 15000);
+
+    return () => {
+      clearInterval(interval);
+      updatePresence({ gameId: undefined, isTyping: false });
+    };
+  }, [isSignedIn, gameId, updatePresence]);
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback((smooth = true) => {
@@ -115,10 +79,12 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
   }, []);
 
   useEffect(() => {
-    scrollToBottom(false);
-  }, [messages.length]);
+    if (messages && messages.length > 0) {
+      scrollToBottom(false);
+    }
+  }, [messages?.length, scrollToBottom]);
 
-  // Track scroll position for "scroll to bottom" button
+  // Track scroll position
   const handleScroll = useCallback(() => {
     if (!messagesContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } =
@@ -128,52 +94,54 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
   }, []);
 
   // Handle sending message
-  const handleSend = () => {
-    if (!inputValue.trim() || !user) return;
+  const handleSend = async () => {
+    if (!inputValue.trim() || !isSignedIn) return;
 
     const replyData = replyingTo
       ? {
           _id: replyingTo._id,
           content: replyingTo.content,
-          username: replyingTo.user.username,
+          username: replyingTo.username || replyingTo.user?.username,
         }
       : undefined;
 
-    sendMessage(inputValue.trim(), "text", replyData);
-
-    // Also persist to database
-    fetch(`/api/messages/${gameId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      await sendMessageMutation({
+        gameId,
         content: inputValue.trim(),
         type: "text",
         replyTo: replyData,
-      }),
-    }).catch(console.error);
+      });
 
-    setInputValue("");
-    setReplyingTo(null);
-    stopTyping();
-    inputRef.current?.focus();
+      setInputValue("");
+      setReplyingTo(null);
+      updatePresence({ gameId, isTyping: false });
+      inputRef.current?.focus();
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
 
   // Handle reaction
-  const handleReaction = (emoji: string) => {
-    if (!user) return;
-    sendMessage(emoji, "reaction");
-    setShowReactions(false);
+  const handleReaction = async (emoji: string) => {
+    if (!isSignedIn) return;
+    try {
+      await sendMessageMutation({
+        gameId,
+        content: emoji,
+        type: "reaction",
+      });
+      setShowReactions(false);
+    } catch (error) {
+      console.error("Failed to send reaction:", error);
+    }
   };
 
   // Handle typing
   const handleInputChange = (value: string) => {
     setInputValue(value);
-
-    if (!user) return;
-
-    startTyping();
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(stopTyping, 2000);
+    if (!isSignedIn) return;
+    updatePresence({ gameId, isTyping: value.length > 0 });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -189,19 +157,13 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-dark-700/50 bg-dark-850">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            {isConnected ? (
-              <span className="w-2 h-2 rounded-full bg-accent-green" />
-            ) : (
-              <span className="w-2 h-2 rounded-full bg-dark-500" />
-            )}
-            <span className="text-xs text-dark-400">
-              {isConnected ? "Connected" : "Connecting..."}
-            </span>
+            <span className="w-2 h-2 rounded-full bg-accent-green" />
+            <span className="text-xs text-dark-400">Live</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-dark-400">
           <Users className="w-4 h-4" />
-          <span className="text-xs font-medium">{activeUsers}</span>
+          <span className="text-xs font-medium">{activeUsersList.length}</span>
         </div>
       </div>
 
@@ -215,7 +177,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
           <div className="flex items-center justify-center py-10">
             <Loader2 className="w-6 h-6 text-dark-500 animate-spin" />
           </div>
-        ) : messages.length === 0 ? (
+        ) : !messages || messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <div className="w-16 h-16 rounded-full bg-dark-800 flex items-center justify-center mb-4">
               <span className="text-3xl">💬</span>
@@ -228,11 +190,18 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
             </p>
           </div>
         ) : (
-          messages.map((msg) => (
+          messages.map((msg: any) => (
             <ChatMessage
               key={msg._id}
-              message={msg}
-              isOwnMessage={user?.id === msg.user._id}
+              message={{
+                ...msg,
+                user: {
+                  _id: msg.userId,
+                  username: msg.username,
+                  avatar: msg.userAvatar,
+                },
+              }}
+              isOwnMessage={clerkUser?.id === msg.userId || clerkUser?.id === msg.clerkId} // Adjusted for Convex IDs
               onClickAvatar={(uid) => setProfileModalUserId(uid)}
               onReply={(m) => {
                 setReplyingTo(m);
@@ -272,7 +241,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
       )}
 
       {/* Quick Reactions */}
-      {showReactions && user && (
+      {showReactions && isSignedIn && (
         <div className="flex items-center gap-1 px-4 py-2 border-t border-dark-700/50 bg-dark-850 animate-slide-up">
           {QUICK_REACTIONS.map((emoji) => (
             <button
@@ -288,7 +257,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
 
       {/* Input Area */}
       <div className="px-4 py-3 border-t border-dark-700/50 bg-dark-850">
-        {user ? (
+        {isSignedIn ? (
           <>
             {/* Reply preview bar */}
             {replyingTo && (
@@ -296,7 +265,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
                 <Reply className="w-3.5 h-3.5 text-primary-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-semibold text-primary-400">
-                    {replyingTo.user.username}
+                    {replyingTo.username || replyingTo.user?.username}
                   </p>
                   <p className="text-xs text-dark-400 truncate">
                     {replyingTo.content}
@@ -311,54 +280,72 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
               </div>
             )}
             <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowReactions(!showReactions)}
-              className={`p-2 rounded-lg transition-colors ${
-                showReactions
-                  ? "text-primary-400 bg-primary-600/10"
-                  : "text-dark-400 hover:text-dark-200"
-              }`}
-            >
-              <Smile className="w-5 h-5" />
-            </button>
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Share your thoughts..."
-              maxLength={500}
-              className="flex-1 bg-dark-800 border border-dark-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/25 transition-all"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!inputValue.trim()}
-              className="p-2.5 rounded-xl bg-primary-600 text-white hover:bg-primary-500 disabled:opacity-30 disabled:hover:bg-primary-600 transition-all disabled:cursor-not-allowed"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
+              <button
+                onClick={() => setShowReactions(!showReactions)}
+                className={`p-2 rounded-lg transition-colors ${
+                  showReactions
+                    ? "text-primary-400 bg-primary-600/10"
+                    : "text-dark-400 hover:text-dark-200"
+                }`}
+              >
+                <Smile className="w-5 h-5" />
+              </button>
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Share your thoughts..."
+                maxLength={500}
+                className="flex-1 bg-dark-800 border border-dark-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/25 transition-all"
+              />
+              <button
+                onClick={handleSend}
+                disabled={!inputValue.trim()}
+                className="p-2.5 rounded-xl bg-primary-600 text-white hover:bg-primary-500 disabled:opacity-30 disabled:hover:bg-primary-600 transition-all disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </>
         ) : (
+          <SignInButton mode="modal">
+            <button className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-dark-800 border border-dark-700/50 text-dark-300 hover:text-white hover:border-primary-500/50 transition-all group">
+              <Lock className="w-4 h-4 text-dark-500 group-hover:text-primary-400 transition-colors" />
+              <span className="text-sm">Sign in to join the conversation</span>
+            </button>
+          </SignInButton>
+        ) || (
           <button
             onClick={() => router.push("/auth")}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-dark-800 border border-dark-700/50 text-dark-300 hover:text-white hover:border-primary-500/50 transition-all group"
           >
             <Lock className="w-4 h-4 text-dark-500 group-hover:text-primary-400 transition-colors" />
-            <span className="text-sm">
-              Sign in to join the conversation
-            </span>
+            <span className="text-sm">Sign in to join the conversation</span>
           </button>
         )}
       </div>
 
       {/* User Profile Modal */}
-      <UserProfileModal
-        userId={profileModalUserId || ""}
-        isOpen={!!profileModalUserId}
-        onClose={() => setProfileModalUserId(null)}
-      />
+      {profileModalUserId && (
+        <UserProfileModal
+          userId={profileModalUserId}
+          isOpen={!!profileModalUserId}
+          onClose={() => setProfileModalUserId(null)}
+        />
+      )}
     </div>
   );
+}
+
+// Dummy SignInButton wrapper for clarity if not using Clerk's built-in one directly
+function SignInButton({
+  children,
+  mode,
+}: {
+  children: React.ReactNode;
+  mode: string;
+}) {
+  return <div className="w-full">{children}</div>;
 }

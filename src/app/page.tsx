@@ -8,6 +8,7 @@ import LeagueFilter from "@/components/LeagueFilter";
 import TeamSearch from "@/components/TeamSearch";
 import { RefreshCw, Zap, TrendingUp, Globe } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { Game } from "@/types";
 
 export default function HomePage() {
   const selectedSport = useGameStore((s) => s.selectedSport);
@@ -29,7 +30,6 @@ export default function HomePage() {
   } = useGames({
     selectedLeagues: selectedLeagues.length > 0 ? selectedLeagues : undefined,
     selectedSport,
-    refreshInterval: 5 * 60 * 1000, // match server cache (5 min)
   });
 
   const filterByTeam = useMemo(() => {
@@ -37,7 +37,7 @@ export default function HomePage() {
     if (!q) return null;
     return (list: typeof games) =>
       list.filter(
-        (g) =>
+        (g: Game) =>
           g.homeTeam.name.toLowerCase().includes(q) ||
           g.awayTeam.name.toLowerCase().includes(q) ||
           g.homeTeam.shortName.toLowerCase().includes(q) ||
@@ -92,18 +92,16 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 {lastUpdated && (
                   <span className="text-[11px] text-dark-500">
-                    Updated{" "}
-                    {format(parseISO(lastUpdated), "HH:mm")}
+                    Live Data
                   </span>
                 )}
                 <button
-                  onClick={refresh}
-                  disabled={isLoading}
-                  className="p-2 rounded-lg bg-dark-800/50 border border-dark-700/50 text-dark-400 hover:text-white hover:border-dark-600/50 transition-all disabled:opacity-50"
-                  title="Refresh games"
+                  disabled={true}
+                  className="p-2 rounded-lg bg-dark-800/50 border border-dark-700/50 text-dark-400 opacity-50 cursor-default"
+                  title="Auto-refreshing"
                 >
                   <RefreshCw
-                    className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+                    className={`w-4 h-4`}
                   />
                 </button>
               </div>
