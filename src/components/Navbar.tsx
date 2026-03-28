@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+<<<<<<< HEAD
 import { SignInButton, UserButton, useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+=======
+import { useSession, signOut } from "next-auth/react";
+import { useRouter, usePathname } from "next/navigation";
+>>>>>>> e0628e45b3713366dbbd149879d3ae878b8da8db
 import {
   Gamepad2,
   User,
@@ -20,6 +25,7 @@ import { api } from "../../convex/_generated/api";
 export default function Navbar() {
   const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
+  const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { isDMOpen, openDM, closeDM } = useDMStore();
@@ -92,12 +98,26 @@ export default function Navbar() {
                 <UserButton afterSignOutUrl="/" />
               </>
             ) : (
+<<<<<<< HEAD
               <SignInButton mode="modal">
                 <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium transition-all hover:shadow-lg hover:shadow-primary-600/25">
                   <User className="w-4 h-4" />
                   <span>Sign In</span>
                 </button>
               </SignInButton>
+=======
+              <button
+                onClick={() =>
+                  router.push(
+                    `/auth?callbackUrl=${encodeURIComponent(pathname || "/")}`
+                  )
+                }
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium transition-all hover:shadow-lg hover:shadow-primary-600/25"
+              >
+                <User className="w-4 h-4" />
+                <span>Sign In</span>
+              </button>
+>>>>>>> e0628e45b3713366dbbd149879d3ae878b8da8db
             )}
 
             {/* Mobile menu toggle */}

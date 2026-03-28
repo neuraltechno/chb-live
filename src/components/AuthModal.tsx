@@ -13,11 +13,12 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { getSafeCallbackPath } from "@/lib/safe-callback-url";
 
 export default function AuthModal() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = getSafeCallbackPath(searchParams.get("callbackUrl"));
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [isLoading, setIsLoading] = useState(false);
