@@ -77,7 +77,7 @@ export interface ChatRoom {
 }
 
 // ---------- Sports / Games ----------
-export type SportType = "soccer" | "ncaa_football" | "ncaa_basketball";
+export type SportType = "soccer" | "ncaa_football" | "ncaa_basketball" | "afl";
 
 export type GameStatus =
   | "scheduled"
@@ -193,7 +193,22 @@ export const NCAA_LEAGUES: League[] = [
   },
 ];
 
-export const ALL_LEAGUES: League[] = [...SOCCER_LEAGUES, ...NCAA_LEAGUES];
+export const AFL_LEAGUES: League[] = [
+  {
+    id: "afl",
+    name: "AFL",
+    shortName: "AFL",
+    logo: "/leagues/afl.png",
+    country: "Australia",
+    sport: "afl",
+  },
+];
+
+export const ALL_LEAGUES: League[] = [
+  ...SOCCER_LEAGUES,
+  ...NCAA_LEAGUES,
+  ...AFL_LEAGUES,
+];
 
 // ---------- API Football League IDs (RapidAPI) ----------
 export const API_FOOTBALL_LEAGUE_IDS: Record<string, number> = {
@@ -217,6 +232,7 @@ export const ESPN_SPORT_SLUGS: Record<string, string> = {
   // NCAA
   ncaa_fb: "football/college-football",
   ncaa_bb: "basketball/mens-college-basketball",
+  afl: "australian-football/afl",
 };
 
 // ---------- Socket Events ----------

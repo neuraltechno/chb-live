@@ -12,6 +12,7 @@ import {
   SPORT_DATE_WINDOWS,
   SOCCER_LEAGUES,
   NCAA_LEAGUES,
+  AFL_LEAGUES,
 } from "./constants";
 
 // ---------- Status Mapping ----------
@@ -169,7 +170,7 @@ async function fetchEspnGames(
           .join(" ");
       }
 
-      const idPrefix = sport === "soccer" ? "soccer" : "ncaa";
+      const idPrefix = sport === "soccer" ? "soccer" : sport === "afl" ? "afl" : "ncaa";
 
       return {
         id: `${idPrefix}_${event.id}`,
@@ -222,6 +223,10 @@ export const fetchAllGames = action({
       ? NCAA_LEAGUES.filter((l) => args.leagueFilter!.includes(l.id)).map((l) => l.id)
       : NCAA_LEAGUES.map((l) => l.id);
 
+    const aflLeagueIds = args.leagueFilter
+      ? AFL_LEAGUES.filter((l) => args.leagueFilter!.includes(l.id)).map((l) => l.id)
+      : AFL_LEAGUES.map((l) => l.id);
+
     const allPromises = [
       ...soccerLeagueIds.map((id) => {
         const league = SOCCER_LEAGUES.find((l) => l.id === id)!;
@@ -230,6 +235,10 @@ export const fetchAllGames = action({
       ...ncaaLeagueIds.map((id) => {
         const league = NCAA_LEAGUES.find((l) => l.id === id)!;
         return fetchEspnGames(id, league, league.sport);
+      }),
+      ...aflLeagueIds.map((id) => {
+        const league = AFL_LEAGUES.find((l) => l.id === id)!;
+        return fetchEspnGames(id, league, "afl");
       }),
     ];
 

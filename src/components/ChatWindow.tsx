@@ -1,18 +1,9 @@
 "use client";
 
-<<<<<<< HEAD
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import { Game, Message } from "@/types";
-=======
-import { useState, useRef, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
-import { Game, Message, SOCKET_EVENTS } from "@/types";
-import { useSocket } from "@/hooks/useSocket";
-import { useChatStore } from "@/lib/store";
->>>>>>> e0628e45b3713366dbbd149879d3ae878b8da8db
+import { Game, Message } from "@/types";
 import ChatMessage from "./ChatMessage";
 import UserProfileModal from "./UserProfileModal";
 import {
@@ -326,18 +317,6 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
               <span className="text-sm">Sign in to join the conversation</span>
             </button>
           </SignInButton>
-        ) || (
-          <button
-            onClick={() =>
-              router.push(
-                `/auth?callbackUrl=${encodeURIComponent(pathname || "/")}`
-              )
-            }
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-dark-800 border border-dark-700/50 text-dark-300 hover:text-white hover:border-primary-500/50 transition-all group"
-          >
-            <Lock className="w-4 h-4 text-dark-500 group-hover:text-primary-400 transition-colors" />
-            <span className="text-sm">Sign in to join the conversation</span>
-          </button>
         )}
       </div>
 

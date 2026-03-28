@@ -70,7 +70,22 @@ export const NCAA_LEAGUES: League[] = [
   },
 ];
 
-export const ALL_LEAGUES: League[] = [...SOCCER_LEAGUES, ...NCAA_LEAGUES];
+export const AFL_LEAGUES: League[] = [
+  {
+    id: "afl",
+    name: "AFL",
+    shortName: "AFL",
+    logo: "/leagues/afl.png",
+    country: "Australia",
+    sport: "afl",
+  },
+];
+
+export const ALL_LEAGUES: League[] = [
+  ...SOCCER_LEAGUES,
+  ...NCAA_LEAGUES,
+  ...AFL_LEAGUES,
+];
 
 export const ESPN_SPORT_SLUGS: Record<string, string> = {
   pl: "soccer/eng.1",
@@ -81,6 +96,7 @@ export const ESPN_SPORT_SLUGS: Record<string, string> = {
   ucl: "soccer/uefa.champions",
   ncaa_fb: "football/college-football",
   ncaa_bb: "basketball/mens-college-basketball",
+  afl: "australian-football/afl",
 };
 
 export const SPORT_DATE_WINDOWS: Record<
@@ -90,4 +106,5 @@ export const SPORT_DATE_WINDOWS: Record<
   soccer: { pastDays: 2, futureDays: 3 },
   ncaa_football: { pastDays: 1, futureDays: 2 },
   ncaa_basketball: { pastDays: 1, futureDays: 2 },
+  afl: { pastDays: 2, futureDays: 4 },
 };

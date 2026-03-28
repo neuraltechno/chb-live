@@ -162,10 +162,43 @@ const FOOTBALL_GROUPS: GroupDef[] = [
   },
 ];
 
+const AFL_GROUPS: GroupDef[] = [
+  {
+    name: "Scoring",
+    keys: [
+      { key: "goals", label: "Goals" },
+      { key: "behinds", label: "Behinds" },
+      { key: "totalPoints", label: "Total Points" },
+    ],
+  },
+  {
+    name: "Possession",
+    keys: [
+      { key: "disposals", label: "Disposals" },
+      { key: "kicks", label: "Kicks" },
+      { key: "handballs", label: "Handballs" },
+      { key: "marks", label: "Marks" },
+      { key: "contestedPossessions", label: "Contested Possessions" },
+      { key: "uncontestedPossessions", label: "Uncontested Possessions" },
+    ],
+  },
+  {
+    name: "Effort",
+    keys: [
+      { key: "tackles", label: "Tackles" },
+      { key: "clearances", label: "Clearances" },
+      { key: "hitouts", label: "Hitouts" },
+      { key: "inside50s", label: "Inside 50s" },
+      { key: "rebound50s", label: "Rebound 50s" },
+    ],
+  },
+];
+
 const SPORT_GROUPS: Record<SportType, GroupDef[]> = {
   soccer: SOCCER_GROUPS,
   ncaa_basketball: BASKETBALL_GROUPS,
   ncaa_football: FOOTBALL_GROUPS,
+  afl: AFL_GROUPS,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

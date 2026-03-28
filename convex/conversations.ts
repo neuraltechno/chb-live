@@ -48,12 +48,13 @@ export const list = query({
 
     const convos = await ctx.db
       .query("conversations")
-      .filter((q) => q.contains(q.field("participants"), me._id))
       .collect();
 
+    const myConvos = convos.filter(c => c.participants.includes(me._id));
+    
     // Fetch other participants
     return await Promise.all(
-      convos.map(async (c) => {
+      myConvos.map(async (c) => {
         const otherId = c.participants.find((p) => p !== me._id)!;
         const other = await ctx.db.get(otherId);
         return {

@@ -1,7 +1,7 @@
 "use client";
 
-import { SportType, ALL_LEAGUES, SOCCER_LEAGUES, NCAA_LEAGUES } from "@/types";
-import { Trophy, Dribbble, GraduationCap, Filter, X } from "lucide-react";
+import { SportType, ALL_LEAGUES, SOCCER_LEAGUES, NCAA_LEAGUES, AFL_LEAGUES } from "@/types";
+import { Trophy, Dribbble, GraduationCap, Filter, X, Zap } from "lucide-react";
 
 interface LeagueFilterProps {
   selectedLeagues: string[];
@@ -33,6 +33,11 @@ const sportTabs: { id: SportType | "all"; label: string; icon: React.ReactNode }
     label: "NCAAB",
     icon: <GraduationCap className="w-4 h-4" />,
   },
+  {
+    id: "afl",
+    label: "AFL",
+    icon: <Zap className="w-4 h-4" />,
+  },
 ];
 
 export default function LeagueFilter({
@@ -50,6 +55,8 @@ export default function LeagueFilter({
       case "ncaa_football":
       case "ncaa_basketball":
         return NCAA_LEAGUES.filter((l) => l.sport === selectedSport);
+      case "afl":
+        return AFL_LEAGUES;
       default:
         return ALL_LEAGUES;
     }
