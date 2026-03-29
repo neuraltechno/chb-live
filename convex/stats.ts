@@ -21,6 +21,19 @@ export const getCachedPlayerStats = internalQuery({
   },
 });
 
+import { query } from "./_generated/server";
+
+export const getPlayerStats = query({
+  args: { externalId: v.string() },
+  handler: async (ctx, { externalId }) => {
+    const record = await ctx.db
+      .query("cachedPlayerStats")
+      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
+      .unique();
+    return record?.stats || null;
+  },
+});
+
 export const saveStatsAndDetectChanges = internalMutation({
   args: {
     externalId: v.string(),

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import MatchStats from "@/components/MatchStats";
+import PlayerStats from "@/components/PlayerStats";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 
@@ -52,8 +53,9 @@ export default function MatchPage() {
   const startDate = parseISO(game.startTime);
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      <div className="lg:w-[420px] xl:w-[480px] flex-shrink-0 bg-dark-900 border-r border-dark-700/50 overflow-y-auto lg:h-screen">
+    <div className="h-screen flex flex-col lg:flex-row bg-dark-950 overflow-hidden">
+      {/* Column 1: Team Info & Team Stats (18%) */}
+      <div className="lg:w-[18%] flex-shrink-0 bg-dark-900 border-r border-dark-700/50 flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-dark-700/50">
           <button
             onClick={() => router.push("/")}
@@ -64,97 +66,116 @@ export default function MatchPage() {
           </button>
         </div>
 
-        <div className={`relative overflow-hidden ${isLive ? "bg-gradient-to-b from-red-950/20 to-transparent" : ""}`}>
-          {isLive && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-red-400 to-red-500" />}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className={`relative overflow-hidden ${isLive ? "bg-gradient-to-b from-red-950/20 to-transparent" : ""}`}>
+            {isLive && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-red-400 to-red-500" />}
 
-          <div className="px-6 py-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-medium text-dark-400 uppercase tracking-wider">{game.league.name}</span>
-              <LiveBadge status={game.status} minute={game.minute} />
-            </div>
-
-            {(game.round || game.leg || game.seriesNote) && (
-              <div className="flex flex-wrap items-center gap-2 mb-5">
-                {game.round && <span className="text-[11px] font-medium text-primary-400 bg-primary-500/10 px-2 py-1 rounded-md">{game.round}</span>}
-                {game.leg && <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md">{game.leg}</span>}
-                {game.seriesNote && <span className="text-[11px] text-dark-400">{game.seriesNote}</span>}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1 flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-2xl bg-dark-800 border border-dark-700/50 flex items-center justify-center overflow-hidden mb-3">
-                  {game.homeTeam.logo ? (
-                    <img src={game.homeTeam.logo} alt={game.homeTeam.name} className="w-10 h-10 object-contain" />
-                  ) : (
-                    <span className="text-lg font-bold text-dark-400">{game.homeTeam.shortName.slice(0, 3)}</span>
-                  )}
-                </div>
-                <h3 className="text-sm font-semibold text-white leading-tight">{game.homeTeam.name}</h3>
-                <span className="text-[11px] text-dark-500 mt-0.5">Home</span>
+            <div className="px-6 py-6 border-b border-dark-700/50">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-medium text-dark-400 uppercase tracking-wider">{game.league.name}</span>
+                <LiveBadge status={game.status} minute={game.minute} />
               </div>
 
-              <div className="flex flex-col items-center">
-                {game.homeTeam.score !== undefined && game.awayTeam.score !== undefined ? (
-                  <div className="flex items-center gap-3">
-                    <span className={`text-4xl font-bold tabular-nums ${isLive ? "text-white" : "text-dark-300"}`}>{game.homeTeam.score}</span>
-                    <span className="text-lg text-dark-600">:</span>
-                    <span className={`text-4xl font-bold tabular-nums ${isLive ? "text-white" : "text-dark-300"}`}>{game.awayTeam.score}</span>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <p className="text-lg font-semibold text-dark-300">{format(startDate, "HH:mm")}</p>
-                    <p className="text-xs text-dark-500">{format(startDate, "MMM d, yyyy")}</p>
-                  </div>
-                )}
-                {isLive && game.minute && <span className="mt-2 text-xs text-red-400 font-medium">{game.minute}'</span>}
-              </div>
-
-              <div className="flex-1 flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-2xl bg-dark-800 border border-dark-700/50 flex items-center justify-center overflow-hidden mb-3">
-                  {game.awayTeam.logo ? (
-                    <img src={game.awayTeam.logo} alt={game.awayTeam.name} className="w-10 h-10 object-contain" />
-                  ) : (
-                    <span className="text-lg font-bold text-dark-400">{game.awayTeam.shortName.slice(0, 3)}</span>
-                  )}
-                </div>
-                <h3 className="text-sm font-semibold text-white leading-tight">{game.awayTeam.name}</h3>
-                <span className="text-[11px] text-dark-500 mt-0.5">Away</span>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-dark-700/50 space-y-2">
-              {game.venue && (
-                <div className="flex items-center gap-2 text-xs text-dark-400">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{game.venue}</span>
+              {(game.round || game.leg || game.seriesNote) && (
+                <div className="flex flex-wrap items-center gap-2 mb-5">
+                  {game.round && <span className="text-[11px] font-medium text-primary-400 bg-primary-500/10 px-2 py-1 rounded-md">{game.round}</span>}
+                  {game.leg && <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md">{game.leg}</span>}
+                  {game.seriesNote && <span className="text-[11px] text-dark-400">{game.seriesNote}</span>}
                 </div>
               )}
-              <div className="flex items-center gap-2 text-xs text-dark-400">
-                <Calendar className="w-3.5 h-3.5" />
-                <span>{format(startDate, "EEEE, MMMM d, yyyy · HH:mm")}</span>
+
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 flex flex-col items-center text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-dark-800 border border-dark-700/50 flex items-center justify-center overflow-hidden mb-3">
+                    {game.homeTeam.logo ? (
+                      <img src={game.homeTeam.logo} alt={game.homeTeam.name} className="w-10 h-10 object-contain" />
+                    ) : (
+                      <span className="text-lg font-bold text-dark-400">{game.homeTeam.shortName.slice(0, 3)}</span>
+                    )}
+                  </div>
+                  <h3 className="text-[13px] font-semibold text-white leading-tight">{game.homeTeam.name}</h3>
+                </div>
+
+                <div className="flex flex-col items-center">
+                  {game.homeTeam.score !== undefined && game.awayTeam.score !== undefined ? (
+                    <div className="flex items-center gap-2">
+                      <span className={`text-3xl font-bold tabular-nums ${isLive ? "text-white" : "text-dark-300"}`}>{game.homeTeam.score}</span>
+                      <span className="text-lg text-dark-600">:</span>
+                      <span className={`text-3xl font-bold tabular-nums ${isLive ? "text-white" : "text-dark-300"}`}>{game.awayTeam.score}</span>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-lg font-semibold text-dark-300">{format(startDate, "HH:mm")}</p>
+                    </div>
+                  )}
+                  {isLive && game.minute && <span className="mt-1 text-xs text-red-400 font-medium">{game.minute}'</span>}
+                </div>
+
+                <div className="flex-1 flex flex-col items-center text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-dark-800 border border-dark-700/50 flex items-center justify-center overflow-hidden mb-3">
+                    {game.awayTeam.logo ? (
+                      <img src={game.awayTeam.logo} alt={game.awayTeam.name} className="w-10 h-10 object-contain" />
+                    ) : (
+                      <span className="text-lg font-bold text-dark-400">{game.awayTeam.shortName.slice(0, 3)}</span>
+                    )}
+                  </div>
+                  <h3 className="text-[13px] font-semibold text-white leading-tight">{game.awayTeam.name}</h3>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-dark-700/50 space-y-2">
+                {game.venue && (
+                  <div className="flex items-center gap-2 text-xs text-dark-400">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>{game.venue}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-xs text-dark-400">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{format(startDate, "MMM d, yyyy · HH:mm")}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <MatchStats game={game} />
-
-        <div className="px-6 py-4 border-t border-dark-700/50">
-          <div className="flex items-start gap-3 bg-dark-800/50 rounded-xl p-4 border border-dark-700/30">
-            <span className="text-xl">💬</span>
-            <div>
-              <h4 className="text-sm font-medium text-dark-200 mb-1">Match Chat</h4>
-              <p className="text-xs text-dark-400 leading-relaxed">
-                Share your thoughts, reactions, and predictions with other fans watching this game. Sign in to participate!
-              </p>
-            </div>
-          </div>
+          <MatchStats game={game} />
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] relative">
-        <ChatWindow gameId={gameId} game={game} />
+      {/* Column 2: Player Stats (64%) */}
+      <div className="lg:w-[64%] flex-1 bg-dark-950 flex flex-col overflow-hidden">
+        <div className="px-6 py-4 border-b border-dark-700/50 bg-dark-900/50 backdrop-blur-sm z-10 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <span className="w-1.5 h-6 bg-primary-500 rounded-full"></span>
+            Player Statistics
+          </h2>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-home" style={{ backgroundColor: '#2563eb' }}></div>
+              <span className="text-xs text-dark-300">{game.homeTeam.shortName}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-away" style={{ backgroundColor: '#dc2626' }}></div>
+              <span className="text-xs text-dark-300">{game.awayTeam.shortName}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          <PlayerStats game={game} />
+        </div>
+      </div>
+
+      {/* Column 3: Chat (18%) */}
+      <div className="lg:w-[18%] flex-shrink-0 bg-dark-900 border-l border-dark-700/50 flex flex-col overflow-hidden relative">
+        <div className="px-4 py-3 border-b border-dark-700/50 bg-dark-900/80 backdrop-blur-sm z-10">
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            Match Chat
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+          </h3>
+        </div>
+        <div className="flex-1 relative">
+          <ChatWindow gameId={gameId} game={game} />
+        </div>
       </div>
     </div>
   );
