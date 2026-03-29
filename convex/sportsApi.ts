@@ -289,7 +289,70 @@ export const fetchGameStats = action({
       const data = await response.json();
 
       const boxscore = data?.boxscore;
-      const players = boxscore?.players || [];
+      let players = boxscore?.players || [];
+
+      // Fetch SuperCoach scores for AFL
+      if (args.leagueId === "afl") {
+        try {
+          const game = data.header?.competitions?.[0];
+          const homeTeam = game?.competitors?.find((c: any) => c.homeAway === "home")?.team?.displayName;
+          const awayTeam = game?.competitors?.find((c: any) => c.homeAway === "away")?.team?.displayName;
+          const startTime = data.header?.competitions?.[0]?.date;
+
+          if (homeTeam && awayTeam && startTime) {
+            const scScores = (await ctx.runAction(internal.footyinfo.fetchSuperCoachScores, {
+              homeTeam,
+              awayTeam,
+              date: startTime,
+            })) as Record<string, { sc: number; guernsey: string }> | null;
+
+            if (scScores) {
+              // Inject SuperCoach scores and guernsey into players data
+              players = players.map((teamData: any) => {
+                const teamStats = { ...teamData };
+                if (teamStats.statistics) {
+                  teamStats.statistics = teamStats.statistics.map((category: any) => {
+                    const catStats = { ...category };
+                    if (catStats.athletes) {
+                      catStats.athletes = catStats.athletes.map((athleteData: any) => {
+                        const ath = { ...athleteData };
+                        if (ath.athlete && ath.athlete.displayName) {
+                          const name = ath.athlete.displayName.toLowerCase();
+                          // Normalize names for matching
+                          const parts = name.split(" ");
+                          const firstName = parts[0];
+                          const initial = firstName.charAt(0);
+                          const fullLastName = parts.slice(1).join(" ");
+                          
+                          const reversed = parts.length > 1 ? `${fullLastName} ${firstName}` : name;
+                          const shortName = parts.length > 1 ? `${initial} ${fullLastName}` : name;
+                          
+                          const data = scScores[reversed] ||
+                                       scScores[shortName] ||
+                                       scScores[name] ||
+                                       (parts.length > 2 ? scScores[`${parts[parts.length - 2]} ${parts[parts.length - 1]}`.toLowerCase()] : undefined);
+
+                          if (data) {
+                            ath.supercoach = data.sc;
+                            if (data.guernsey) {
+                              ath.guernsey = data.guernsey;
+                            }
+                          }
+                        }
+                        return ath;
+                      });
+                    }
+                    return catStats;
+                  });
+                }
+                return teamStats;
+              });
+            }
+          }
+        } catch (scError) {
+          console.error("[Stats Action] FootyInfo error:", scError);
+        }
+      }
 
       // Save player stats
       await ctx.runMutation(internal.stats.savePlayerStats, {

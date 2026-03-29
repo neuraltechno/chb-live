@@ -1,9 +1,10 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Game } from "@/types";
-import { User, Shield, Info } from "lucide-react";
+import { User, Shield, Info, ChevronUp, ChevronDown } from "lucide-react";
 
 interface PlayerStatsProps {
   game: Game;
@@ -11,6 +12,17 @@ interface PlayerStatsProps {
 
 export default function PlayerStats({ game }: PlayerStatsProps) {
   const stats = useQuery(api.stats.getPlayerStats, { externalId: game.externalId });
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: game.sport === "afl" ? "sc" : (game.sport === "soccer" ? "goals" : "points"),
+    direction: "desc"
+  });
+
+  const handleSort = (key: string) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === "desc" ? "asc" : "desc"
+    }));
+  };
 
   if (stats === undefined) {
     return (
@@ -59,7 +71,7 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
                 id: player.id,
                 name: player.displayName,
                 position: pos,
-                jersey: player.jersey,
+                jersey: player.jersey || athlete.guernsey,
                 headshot: player.headshot?.href,
                 stats: {}
               };
@@ -71,6 +83,16 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
                   existing.stats[key] = val;
                 }
               });
+
+              // Add SuperCoach score if available
+              if (athlete.supercoach !== undefined) {
+                existing.stats["sc"] = athlete.supercoach;
+              }
+
+              // Update jersey if footyinfo guernsey is available
+              if (athlete.guernsey !== undefined) {
+                existing.jersey = athlete.guernsey;
+              }
 
               playersMap.set(player.id, existing);
             });
@@ -116,16 +138,34 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
               { key: "tc", label: "CL" },
               { key: "c", label: "CG" },
               { key: "i50", label: "I50" },
-              { key: "r50", label: "R50" }
+              { key: "r50", label: "R50" },
+              { key: "sc", label: "SC" }
             ];
           }
 
           const getStatValue = (player: any, key: string) => {
+            if (key === 'name') return player.name;
             const k = key.toLowerCase();
             const val = player.stats[k];
             if (val !== undefined) return val;
             return "0";
           };
+
+          const sortedPlayers = [...players].sort((a, b) => {
+            const aVal = getStatValue(a, sortConfig.key);
+            const bVal = getStatValue(b, sortConfig.key);
+            
+            const aNum = parseFloat(aVal);
+            const bNum = parseFloat(bVal);
+            
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+              return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
+            }
+
+            return sortConfig.direction === 'asc'
+              ? String(aVal).localeCompare(String(bVal))
+              : String(bVal).localeCompare(String(aVal));
+          });
 
           if (players.length === 0) return null;
 
@@ -144,32 +184,56 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-dark-700/30 text-dark-400 uppercase tracking-wider font-medium">
-                      <th className="px-4 py-2.5 min-w-[140px]">Player</th>
+                      <th
+                        className="px-2 py-2.5 min-w-[110px] cursor-pointer hover:text-white transition-colors group"
+                        onClick={() => handleSort('name')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Player
+                          <div className={sortConfig.key === 'name' ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity"}>
+                            {sortConfig.key === 'name' ? (
+                              sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3 text-dark-600" />
+                            )}
+                          </div>
+                        </div>
+                      </th>
                       {displayStats.map(s => (
-                        <th key={s.key} className="px-2 py-2.5 text-center font-bold text-[10px]">{s.label}</th>
+                        <th
+                          key={s.key}
+                          className="px-0.5 py-2.5 text-center font-bold text-[13px] cursor-pointer hover:text-white transition-colors group"
+                          onClick={() => handleSort(s.key)}
+                        >
+                          <div className="flex items-center justify-center gap-0">
+                            {s.label}
+                            <div className={sortConfig.key === s.key ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity"}>
+                              {sortConfig.key === s.key ? (
+                                sortConfig.direction === 'asc' ? <ChevronUp className="w-1.5 h-1.5" /> : <ChevronDown className="w-1.5 h-1.5" />
+                              ) : (
+                                <ChevronDown className="w-1.5 h-1.5 text-dark-600" />
+                              )}
+                            </div>
+                          </div>
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-700/20">
-                    {players.map((player) => (
+                    {sortedPlayers.map((player) => (
                       <tr key={player.id} className="hover:bg-dark-800/30 transition-colors">
-                        <td className="px-4 py-1.5 flex items-center gap-2.5">
-                          <div className="w-6 h-6 rounded-full bg-dark-800 border border-dark-700/50 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                            {player.headshot ? (
-                              <img src={player.headshot} alt={player.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <User className="w-3 h-3 text-dark-500" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-white font-medium truncate text-[13px]">{player.name}</span>
-                            <span className="text-[11px] text-dark-500 whitespace-nowrap">
-                              ({player.position || "-"}) {player.jersey ? `#${player.jersey}` : ""}
+                        <td className="px-2 py-1.5 flex items-center gap-1.5">
+                          <div className="w-6 h-6 rounded-lg bg-dark-800 border border-dark-700/50 flex-shrink-0 flex items-center justify-center">
+                            <span className="text-[11px] font-bold text-primary-400">
+                              {player.jersey || "-"}
                             </span>
+                          </div>
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="text-white font-medium truncate text-[13px]">{player.name}</span>
                           </div>
                         </td>
                         {displayStats.map(s => (
-                          <td key={s.key} className="px-2 py-1.5 text-center text-dark-200 tabular-nums">
+                          <td key={s.key} className="px-0.5 py-1.5 text-center text-dark-200 tabular-nums text-[13px]">
                             {getStatValue(player, s.key)}
                           </td>
                         ))}

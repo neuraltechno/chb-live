@@ -12,6 +12,7 @@ import type * as constants from "../constants.js";
 import type * as conversations from "../conversations.js";
 import type * as crons from "../crons.js";
 import type * as dmMessages from "../dmMessages.js";
+import type * as footyinfo from "../footyinfo.js";
 import type * as games from "../games.js";
 import type * as messages from "../messages.js";
 import type * as presence from "../presence.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   conversations: typeof conversations;
   crons: typeof crons;
   dmMessages: typeof dmMessages;
+  footyinfo: typeof footyinfo;
   games: typeof games;
   messages: typeof messages;
   presence: typeof presence;

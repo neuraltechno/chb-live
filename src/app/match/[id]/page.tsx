@@ -54,8 +54,8 @@ export default function MatchPage() {
 
   return (
     <div className="h-screen flex flex-col lg:flex-row bg-dark-950 overflow-hidden">
-      {/* Column 1: Team Info & Team Stats (18%) */}
-      <div className="lg:w-[18%] flex-shrink-0 bg-dark-900 border-r border-dark-700/50 flex flex-col overflow-hidden">
+      {/* Column 1: Team Info & Team Stats (15%) */}
+      <div className="lg:w-[15%] flex-shrink-0 bg-dark-900 border-r border-dark-700/50 flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-dark-700/50">
           <button
             onClick={() => router.push("/")}
@@ -142,8 +142,8 @@ export default function MatchPage() {
         </div>
       </div>
 
-      {/* Column 2: Player Stats (64%) */}
-      <div className="lg:w-[64%] flex-1 bg-dark-950 flex flex-col overflow-hidden">
+      {/* Column 2: Player Stats (70%) */}
+      <div className="lg:w-[70%] flex-1 bg-dark-950 flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-dark-700/50 bg-dark-900/50 backdrop-blur-sm z-10 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <span className="w-1.5 h-6 bg-primary-500 rounded-full"></span>
@@ -165,8 +165,8 @@ export default function MatchPage() {
         </div>
       </div>
 
-      {/* Column 3: Chat (18%) */}
-      <div className="lg:w-[18%] flex-shrink-0 bg-dark-900 border-l border-dark-700/50 flex flex-col overflow-hidden relative">
+      {/* Column 3: Chat (15%) */}
+      <div className="lg:w-[15%] flex-shrink-0 bg-dark-900 border-l border-dark-700/50 flex flex-col overflow-hidden relative">
         <div className="px-4 py-3 border-b border-dark-700/50 bg-dark-900/80 backdrop-blur-sm z-10">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             Match Chat
