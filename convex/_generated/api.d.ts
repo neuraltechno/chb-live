@@ -16,6 +16,7 @@ import type * as games from "../games.js";
 import type * as messages from "../messages.js";
 import type * as presence from "../presence.js";
 import type * as sportsApi from "../sportsApi.js";
+import type * as stats from "../stats.js";
 import type * as sync from "../sync.js";
 import type * as users from "../users.js";
 
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   presence: typeof presence;
   sportsApi: typeof sportsApi;
+  stats: typeof stats;
   sync: typeof sync;
   users: typeof users;
 }>;

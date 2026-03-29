@@ -263,79 +263,6 @@ export const fetchAllGames = action({
   },
 });
 
-export const getCachedStats = internalQuery({
-  args: { externalId: v.string() },
-  handler: async (ctx, { externalId }) => {
-    return await ctx.db
-      .query("cachedStats")
-      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
-      .unique();
-  },
-});
-
-export const saveStatsAndDetectChanges = internalMutation({
-  args: {
-    externalId: v.string(),
-    stats: v.any(),
-    gameId: v.optional(v.string()),
-  },
-  handler: async (ctx, { externalId, stats, gameId }) => {
-    const existing = await ctx.db
-      .query("cachedStats")
-      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
-      .unique();
-
-    if (existing && gameId) {
-      const oldStats = existing.stats;
-
-      // --- Change Detection Logic ---
-      const detectors = [
-        { key: "goals", label: "Goal", icon: "⚽" },
-        { key: "touchdowns", label: "Touchdown", icon: "🏈" },
-        { key: "fieldGoalsMade", label: "Field Goal", icon: "🏀" },
-        { key: "behinds", label: "Behind", icon: "🏉" },
-      ];
-
-      for (const { key, label, icon } of detectors) {
-        const oldHome = parseInt(oldStats.home[key] || "0");
-        const newHome = parseInt(stats.home[key] || "0");
-        const oldAway = parseInt(oldStats.away[key] || "0");
-        const newAway = parseInt(stats.away[key] || "0");
-
-        if (newHome > oldHome) {
-          await ctx.db.insert("messages", {
-            gameId,
-            content: `${icon} ${label}! The home team just scored!`,
-            username: "MatchBot",
-            type: "text",
-          });
-        }
-        if (newAway > oldAway) {
-          await ctx.db.insert("messages", {
-            gameId,
-            content: `${icon} ${label}! The away team just scored!`,
-            username: "MatchBot",
-            type: "text",
-          });
-        }
-      }
-    }
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        stats,
-        lastFetched: Date.now(),
-      });
-    } else {
-      await ctx.db.insert("cachedStats", {
-        externalId,
-        stats,
-        lastFetched: Date.now(),
-      });
-    }
-  },
-});
-
 export const fetchGameStats = action({
   args: {
     externalId: v.string(),
@@ -344,9 +271,9 @@ export const fetchGameStats = action({
   },
   handler: async (ctx, args) => {
     // 1. Check cache first
-    const cached = await ctx.runQuery(internal.sportsApi.getCachedStats, {
+    const cached = (await ctx.runQuery(internal.stats.getCachedStats, {
       externalId: args.externalId,
-    });
+    })) as any;
 
     // If cache is fresh (less than 30 seconds old), return it
     if (cached && Date.now() - cached.lastFetched < 30_000) {
@@ -362,10 +289,18 @@ export const fetchGameStats = action({
       const data = await response.json();
 
       const boxscore = data?.boxscore;
+      const players = boxscore?.players || [];
+
+      // Save player stats
+      await ctx.runMutation(internal.stats.savePlayerStats, {
+        externalId: args.externalId,
+        stats: players,
+      });
+
       const teams: any[] = boxscore?.teams || [];
 
-      const homeTeam = teams.find((t) => t.homeAway === "home");
-      const awayTeam = teams.find((t) => t.homeAway === "away");
+      const homeTeam = teams.find((t: any) => t.homeAway === "home");
+      const awayTeam = teams.find((t: any) => t.homeAway === "away");
 
       if (!homeTeam || !awayTeam) return cached?.stats || null;
 
@@ -394,7 +329,7 @@ export const fetchGameStats = action({
       const newStats = { home: homeMap, away: awayMap };
 
       // 2. Save to cache and detect changes (bot messages)
-      await ctx.runMutation(internal.sportsApi.saveStatsAndDetectChanges, {
+      await ctx.runMutation(internal.stats.saveStatsAndDetectChanges, {
         externalId: args.externalId,
         stats: newStats,
         gameId: args.gameId,

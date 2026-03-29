@@ -90,4 +90,10 @@ export default defineSchema({
     stats: v.any(),
     lastFetched: v.number(),
   }).index("by_externalId", ["externalId"]),
+
+  cachedPlayerStats: defineTable({
+    externalId: v.string(),
+    stats: v.any(),
+    lastFetched: v.number(),
+  }).index("by_externalId", ["externalId"]),
 });
