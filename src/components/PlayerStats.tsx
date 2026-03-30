@@ -123,6 +123,7 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
             ];
           } else if (isAfl) {
             displayStats = [
+              { key: "sc", label: "SC" },
               { key: "k", label: "K" },
               { key: "h", label: "HB" },
               { key: "d", label: "D" },
@@ -138,8 +139,7 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
               { key: "tc", label: "CL" },
               { key: "c", label: "CG" },
               { key: "i50", label: "I50" },
-              { key: "r50", label: "R50" },
-              { key: "sc", label: "SC" }
+              { key: "r50", label: "R50" }             
             ];
           }
 

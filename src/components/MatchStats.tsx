@@ -257,32 +257,39 @@ function StatBar({
   const awayLeads = stat.awayNum > stat.homeNum;
 
   return (
-    <div className="px-4 py-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className={`text-sm font-bold tabular-nums w-10 text-left ${homeLeads ? "text-white" : "text-dark-400"}`}>
+    <div className="px-4 py-1.5">
+      <div className="flex items-center gap-3">
+        <span
+          className={`text-[12px] font-bold tabular-nums w-8 text-left ${homeLeads ? "text-white" : "text-dark-400"}`}
+        >
           {stat.home}
         </span>
-        <span className="text-[11px] font-medium text-dark-400 text-center flex-1 px-2 truncate">
-          {stat.label}
-        </span>
-        <span className={`text-sm font-bold tabular-nums w-10 text-right ${awayLeads ? "text-white" : "text-dark-400"}`}>
+
+        <div className="flex-1 flex flex-col gap-0.5">
+          <span className="text-[12px] font-medium text-dark-400 text-center truncate">
+            {stat.label}
+          </span>
+          <div className="flex items-center gap-0.5 h-1">
+            <div className="flex-1 flex justify-end overflow-hidden rounded-l-full">
+              <div
+                className={`h-full rounded-l-full transition-all duration-700 ease-out ${homeLeads ? homeColor : "bg-dark-600"}`}
+                style={{ width: `${homeWidth}%` }}
+              />
+            </div>
+            <div className="flex-1 overflow-hidden rounded-r-full">
+              <div
+                className={`h-full rounded-r-full transition-all duration-700 ease-out ${awayLeads ? awayColor : "bg-dark-600"}`}
+                style={{ width: `${awayWidth}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <span
+          className={`text-[12px] font-bold tabular-nums w-8 text-right ${awayLeads ? "text-white" : "text-dark-400"}`}
+        >
           {stat.away}
         </span>
-      </div>
-
-      <div className="flex items-center gap-0.5 h-1.5">
-        <div className="flex-1 flex justify-end overflow-hidden rounded-l-full">
-          <div
-            className={`h-full rounded-l-full transition-all duration-700 ease-out ${homeLeads ? homeColor : "bg-dark-600"}`}
-            style={{ width: `${homeWidth}%` }}
-          />
-        </div>
-        <div className="flex-1 overflow-hidden rounded-r-full">
-          <div
-            className={`h-full rounded-r-full transition-all duration-700 ease-out ${awayLeads ? awayColor : "bg-dark-600"}`}
-            style={{ width: `${awayWidth}%` }}
-          />
-        </div>
       </div>
     </div>
   );

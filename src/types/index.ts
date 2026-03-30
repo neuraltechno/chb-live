@@ -107,6 +107,7 @@ export interface Game {
   minute?: number;
   venue?: string;
   round?: string; // e.g. "Knockout Round Playoffs", "Quarterfinals", "Semifinals", "Final"
+  roundNumber?: number;
   leg?: string; // e.g. "1st Leg", "2nd Leg"
   seriesNote?: string; // e.g. "1st Leg" or aggregate score
   messageCount: number;

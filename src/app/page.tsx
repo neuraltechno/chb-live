@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useGames } from "@/hooks/useGames";
 import { useGameStore } from "@/lib/store";
 import MatchList from "@/components/MatchList";
@@ -13,8 +13,10 @@ import { Game } from "@/types";
 export default function HomePage() {
   const selectedSport = useGameStore((s) => s.selectedSport);
   const selectedLeagues = useGameStore((s) => s.selectedLeagues);
+  const selectedRound = useGameStore((s) => s.selectedRound);
   const teamSearch = useGameStore((s) => s.teamSearch);
   const setSport = useGameStore((s) => s.setSport);
+  const setRound = useGameStore((s) => s.setRound);
   const toggleLeague = useGameStore((s) => s.toggleLeague);
   const clearSelectedLeagues = useGameStore((s) => s.clearSelectedLeagues);
 
@@ -23,6 +25,7 @@ export default function HomePage() {
     liveGames,
     scheduledGames,
     finishedGames,
+    currentRound,
     isLoading,
     error,
     lastUpdated,
@@ -30,7 +33,16 @@ export default function HomePage() {
   } = useGames({
     selectedLeagues: selectedLeagues.length > 0 ? selectedLeagues : undefined,
     selectedSport,
+    selectedRound,
   });
+
+  // Set default round once we have current round info
+  useEffect(() => {
+    if (selectedRound === null && currentRound !== null) {
+      console.log("Setting default round to:", currentRound);
+      setRound(currentRound);
+    }
+  }, [currentRound, selectedRound, setRound]);
 
   const filterByTeam = useMemo(() => {
     const q = teamSearch.trim().toLowerCase();
@@ -113,11 +125,8 @@ export default function HomePage() {
       {/* Filters */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
         <LeagueFilter
-          selectedLeagues={selectedLeagues}
-          onToggleLeague={toggleLeague}
-          onClearLeagues={clearSelectedLeagues}
-          selectedSport={selectedSport}
-          onChangeSport={setSport}
+          selectedRound={selectedRound}
+          onChangeRound={setRound}
           rightSlot={<TeamSearch games={games} />}
         />
       </div>

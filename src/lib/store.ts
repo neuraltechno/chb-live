@@ -7,10 +7,12 @@ import { Game, SportType, Message } from "@/types";
 interface GameStore {
   selectedSport: SportType | "all";
   selectedLeagues: string[];
+  selectedRound: number | null;
   selectedGame: Game | null;
   teamSearch: string;
   setSport: (sport: SportType | "all") => void;
   toggleLeague: (leagueId: string) => void;
+  setRound: (round: number | null) => void;
   clearSelectedLeagues: () => void;
   setSelectedGame: (game: Game | null) => void;
   setTeamSearch: (query: string) => void;
@@ -20,16 +22,18 @@ interface GameStore {
 export const useGameStore = create<GameStore>((set) => ({
   selectedSport: "all",
   selectedLeagues: [],
+  selectedRound: null,
   selectedGame: null,
   teamSearch: "",
   setSport: (sport) =>
-    set({ selectedSport: sport, selectedLeagues: [] }),
+    set({ selectedSport: sport, selectedLeagues: [], selectedRound: null }),
   toggleLeague: (leagueId) =>
     set((state) => ({
       selectedLeagues: state.selectedLeagues.includes(leagueId)
         ? state.selectedLeagues.filter((id) => id !== leagueId)
         : [...state.selectedLeagues, leagueId],
     })),
+  setRound: (round) => set({ selectedRound: round }),
   clearSelectedLeagues: () => set({ selectedLeagues: [] }),
   setSelectedGame: (game) => set({ selectedGame: game }),
   setTeamSearch: (query) => set({ teamSearch: query }),

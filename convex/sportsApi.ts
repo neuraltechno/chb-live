@@ -25,6 +25,12 @@ function mapEspnStatus(state: string): GameStatus {
       return "scheduled";
     case "post":
       return "finished";
+    case "status_scheduled":
+      return "scheduled";
+    case "status_in_progress":
+      return "live";
+    case "status_final":
+      return "finished";
     default:
       return "scheduled";
   }
@@ -172,6 +178,21 @@ async function fetchEspnGames(
 
       const idPrefix = sport === "soccer" ? "soccer" : sport === "afl" ? "afl" : "ncaa";
 
+      // Try to parse round number for AFL
+      let roundNumber: number | undefined;
+      const round = event.competitions?.[0]?.round;
+      if (round) {
+        roundNumber = typeof round === 'object' ? round.number : round;
+      }
+      
+      // Fallback for round name if it's in regular season
+      let roundNameDisplay = roundName;
+      if (sport === "afl" && !roundNameDisplay) {
+          if (roundNumber !== undefined) {
+              roundNameDisplay = roundNumber === 0 ? "Opening Round" : `Round ${roundNumber}`;
+          }
+      }
+
       return {
         id: `${idPrefix}_${event.id}`,
         externalId: String(event.id),
@@ -195,7 +216,8 @@ async function fetchEspnGames(
         startTime: event.date,
         minute,
         venue: competition?.venue?.fullName || competition?.venue?.displayName,
-        round: roundName,
+        round: roundNameDisplay,
+        roundNumber,
         leg: legStr,
         seriesNote,
         messageCount: 0,
@@ -242,10 +264,124 @@ export const fetchAllGames = action({
       }),
     ];
 
+    // Special case for AFL: if we are fetching AFL, we also want to fetch all rounds
+    if (aflLeagueIds.includes("afl")) {
+      const aflLeague = AFL_LEAGUES.find((l) => l.id === "afl")!;
+      const baseUrl = `https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/scoreboard`;
+      
+      // ESPN usually supports fetching by year and week
+      // For AFL, rounds are often called 'weeks' in ESPN API
+      // Opening Round is sometimes Round 1 in ESPN if Round 1 is called Round 2,
+      // OR Opening Round is its own thing. Let's fetch 0 to 24.
+      const rounds = Array.from({ length: 25 }, (_, i) => i);
+      const year = new Date().getFullYear();
+
+      const roundPromises = rounds.map(async (roundNum) => {
+        try {
+          // If we are fetching today's matches, ESPN might return a different format
+          // than if we fetch a specific week. Let's make sure we handle both.
+          // IMPORTANT: If current year is 2026, we fetch 2026.
+          const res = await fetch(`${baseUrl}?dates=${year}&week=${roundNum}&limit=50`);
+          const resData = await res.json();
+          const events = resData?.events || [];
+          
+          if (events.length === 0) {
+            console.log(`[AFL Fetch] No events found for round ${roundNum} using year ${year} and week ${roundNum}`);
+          }
+
+          return events.map((event: any) => {
+            const competition = event.competitions?.[0];
+            const homeCompetitor = competition?.competitors?.find((c: any) => c.homeAway === "home");
+            const awayCompetitor = competition?.competitors?.find((c: any) => c.homeAway === "away");
+            const stateStr = competition?.status?.type?.state;
+            const status = mapEspnStatus(stateStr);
+            const showScore = status === "live" || status === "halftime" || status === "finished";
+            const homeScore = homeCompetitor?.score ? parseInt(homeCompetitor.score) : undefined;
+            const awayScore = awayCompetitor?.score ? parseInt(awayCompetitor.score) : undefined;
+
+            // Use the round parameter from the outer scope as a fallback
+            let finalRoundNumber = roundNum;
+            
+            // Try to parse round number from event data if available
+            const eventRound = event.competitions?.[0]?.round;
+            if (eventRound) {
+                finalRoundNumber = typeof eventRound === 'object' ? eventRound.number : eventRound;
+            }
+
+            let roundDisplay = `Round ${finalRoundNumber}`;
+            if (finalRoundNumber === 0) roundDisplay = "Opening Round";
+            
+            // If ESPN calls it "Round X" but we want our own mapping, we trust our round number
+            if (event.season?.slug !== "regular-season") {
+              roundDisplay = event.season?.slug || roundDisplay;
+            }
+
+            console.log(`[AFL Fetch] Event: ${event.id}, Round: ${finalRoundNumber}, Display: ${roundDisplay}`);
+
+            return {
+              id: `afl_${event.id}`,
+              externalId: String(event.id),
+              sport: "afl" as SportType,
+              league: aflLeague,
+              homeTeam: {
+                id: String(homeCompetitor?.id || homeCompetitor?.team?.id || ""),
+                name: homeCompetitor?.team?.displayName || "TBD",
+                shortName: homeCompetitor?.team?.abbreviation || "TBD",
+                logo: homeCompetitor?.team?.logo || "",
+                score: showScore ? homeScore : undefined,
+              },
+              awayTeam: {
+                id: String(awayCompetitor?.id || awayCompetitor?.team?.id || ""),
+                name: awayCompetitor?.team?.displayName || "TBD",
+                shortName: awayCompetitor?.team?.abbreviation || "TBD",
+                logo: awayCompetitor?.team?.logo || "",
+                score: showScore ? awayScore : undefined,
+              },
+              status,
+              startTime: event.date,
+              venue: competition?.venue?.fullName || competition?.venue?.displayName,
+              round: roundDisplay,
+              roundNumber: finalRoundNumber,
+              messageCount: 0,
+              activeUsers: 0,
+            } as Game;
+          });
+        } catch (e) {
+          return [];
+        }
+      });
+      
+      allPromises.push(...roundPromises);
+    }
+
     const results = await Promise.all(allPromises);
     const allGames = results.flat();
 
-    return allGames.sort((a, b) => {
+    // Deduplicate by externalId
+    // If we have a game from the full season fetch and the today's fetch, 
+    // prioritize the one with a roundNumber (usually from the season fetch).
+    const uniqueGamesMap = new Map<string, Game>();
+    for (const g of allGames) {
+      const existing = uniqueGamesMap.get(g.externalId);
+      if (!existing || (g.roundNumber !== undefined && existing.roundNumber === undefined)) {
+        uniqueGamesMap.set(g.externalId, g);
+      }
+    }
+    const uniqueGames = Array.from(uniqueGamesMap.values());
+
+    return uniqueGames.map((game) => {
+      // For AFL games from fetchEspnGames, ensure roundNumber is set
+      if (game.sport === "afl" && game.roundNumber === undefined) {
+        // We can try to extract it from the 'round' string if it exists
+        if (game.round && game.round.startsWith("Round ")) {
+          const num = parseInt(game.round.replace("Round ", ""));
+          if (!isNaN(num)) game.roundNumber = num;
+        } else if (game.round === "Opening Round") {
+          game.roundNumber = 0;
+        }
+      }
+      return game;
+    }).sort((a, b) => {
       const statusOrder: Record<GameStatus, number> = {
         live: 0,
         halftime: 1,
@@ -285,11 +421,16 @@ export const fetchGameStats = action({
 
     try {
       const url = `https://site.api.espn.com/apis/site/v2/sports/${slug}/summary?event=${args.externalId}`;
+      console.log(`[Stats Action] Fetching ESPN Summary URL: ${url}`);
       const response = await fetch(url);
       const data = await response.json();
 
       const boxscore = data?.boxscore;
       let players = boxscore?.players || [];
+
+      if (players.length > 0) {
+        console.log(`[Stats Action] Player stats sample for team 0: ${JSON.stringify(players[0].statistics?.[0]?.keys || players[0].statistics?.[0]?.labels)}`);
+      }
 
       // Fetch SuperCoach scores for AFL
       if (args.leagueId === "afl") {
@@ -362,6 +503,12 @@ export const fetchGameStats = action({
 
       const teams: any[] = boxscore?.teams || [];
 
+      console.log(`[Stats Action] Teams from ESPN boxscore: ${JSON.stringify(teams.map(t => ({
+        name: t.team?.displayName,
+        statsCount: t.statistics?.length,
+        statNames: t.statistics?.map((s: any) => s.name)
+      })))}`);
+
       const homeTeam = teams.find((t: any) => t.homeAway === "home");
       const awayTeam = teams.find((t: any) => t.homeAway === "away");
 
@@ -370,9 +517,12 @@ export const fetchGameStats = action({
       const homeMap: Record<string, string> = {};
       const awayMap: Record<string, string> = {};
 
+      console.log(`[Stats Action] Mapping stats for ${args.leagueId}. Home stats count: ${homeTeam.statistics?.length}`);
+
       (homeTeam.statistics || []).forEach((s: any) => {
         if (s.name && s.displayValue !== undefined) {
           homeMap[s.name] = String(s.displayValue);
+          console.log(`[Stats Action] Stat: ${s.name} = ${s.displayValue} (${s.label})`);
         }
       });
 

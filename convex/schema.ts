@@ -44,11 +44,14 @@ export default defineSchema({
     externalId: v.string(),
     sport: v.string(),
     leagueId: v.string(),
+    roundNumber: v.optional(v.number()),
+    roundName: v.optional(v.string()),
     data: v.any(),
     lastFetched: v.number(),
   })
     .index("by_externalId", ["externalId"])
-    .index("by_sport_league", ["sport", "leagueId"]),
+    .index("by_sport_league", ["sport", "leagueId"])
+    .index("by_round", ["roundNumber"]),
 
   conversations: defineTable({
     key: v.string(), // Sorted userId1_userId2

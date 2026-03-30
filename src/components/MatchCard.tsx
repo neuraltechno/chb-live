@@ -17,10 +17,10 @@ function MatchCard({ game, onClick }: MatchCardProps) {
   const startDate = parseISO(game.startTime);
   const timeString = format(startDate, "HH:mm");
   const dateString = isToday(startDate)
-    ? "Today"
+    ? `Today ${format(startDate, "MMM d")}`
     : isTomorrow(startDate)
-    ? "Tomorrow"
-    : format(startDate, "MMM d");
+    ? `Tomorrow ${format(startDate, "MMM d")}`
+    : format(startDate, "EEEE MMM d");
 
   const handleClick = () => {
     if (onClick) {
@@ -173,13 +173,18 @@ function MatchCard({ game, onClick }: MatchCardProps) {
                 <span className="text-[11px]">{game.activeUsers}</span>
               </div>
             )}
+            {game.venue && (
+              <span className="text-[10px] text-dark-500 max-w-[120px] truncate">
+                · {game.venue}
+              </span>
+            )}
           </div>
-          {isScheduled && (
+          <div className="flex flex-col items-end">
             <span className="text-[11px] text-dark-500">{dateString}</span>
-          )}
-          <span className="text-[11px] text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity">
-            Open Chat →
-          </span>
+            <span className="text-[10px] text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              Open Chat →
+            </span>
+          </div>
         </div>
       </div>
     </button>

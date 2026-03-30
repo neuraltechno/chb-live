@@ -8,16 +8,18 @@ import { Game, SportType } from "@/types";
 interface UseGamesOptions {
   selectedLeagues?: string[];
   selectedSport?: SportType | "all";
+  selectedRound?: number | null;
 }
 
 export function useGames(options: UseGamesOptions = {}) {
-  const { selectedLeagues, selectedSport = "all" } = options;
+  const { selectedLeagues, selectedSport = "all", selectedRound } = options;
 
-  console.log("useGames hook: leagues", selectedLeagues, "sport", selectedSport);
+  console.log("useGames hook: leagues", selectedLeagues, "sport", selectedSport, "round", selectedRound);
 
   const games = useQuery(api.games.list, {
     leagues: selectedLeagues,
     sport: selectedSport === "all" ? undefined : selectedSport,
+    round: selectedRound ?? undefined,
   });
 
   const isLoading = games === undefined;
@@ -40,11 +42,30 @@ export function useGames(options: UseGamesOptions = {}) {
     };
   }, [games]);
 
+  const currentRound = useMemo(() => {
+    if (!games || games.length === 0) return null;
+    
+    // Find the round of the first game that is not finished
+    const firstActiveGame = games.find(g => g.status !== "finished");
+    if (firstActiveGame && firstActiveGame.roundNumber !== undefined) {
+      return firstActiveGame.roundNumber;
+    }
+    
+    // If all games are finished, return the round of the last game
+    const lastGame = games[games.length - 1];
+    if (lastGame && lastGame.roundNumber !== undefined) {
+      return lastGame.roundNumber;
+    }
+    
+    return null;
+  }, [games]);
+
   return {
     games: games || [],
     liveGames,
     scheduledGames,
     finishedGames,
+    currentRound,
     isLoading,
     error,
     lastUpdated,
