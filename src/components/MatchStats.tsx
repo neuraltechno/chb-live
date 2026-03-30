@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Game, SportType } from "@/types";
-import { BarChart2, Loader2 } from "lucide-react";
+import { BarChart2, Loader2, Plus, Minus } from "lucide-react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
@@ -164,33 +164,63 @@ const FOOTBALL_GROUPS: GroupDef[] = [
 
 const AFL_GROUPS: GroupDef[] = [
   {
-    name: "Scoring",
+    name: "Scoring & Attack",
     keys: [
       { key: "goals", label: "Goals" },
       { key: "behinds", label: "Behinds" },
       { key: "score", label: "Total Points" },
       { key: "goalAccuracy", label: "Goal Accuracy" },
+      { key: "goalAssists", label: "Goal Assists" },
+      { key: "inside50s", label: "Inside 50s" },
+      { key: "marksInside50", label: "Marks Inside 50" },
     ],
   },
   {
-    name: "Possession",
+    name: "Contest & Clearance",
     keys: [
-      { key: "disposals", label: "Disposals" },
-      { key: "kicks", label: "Kicks" },
-      { key: "handballs", label: "Handballs" },
-      { key: "marks", label: "Marks" },
+      { key: "centreClearances", label: "Centre Clearances" },
+      { key: "stoppageClearances", label: "Stoppage Clearances" },
+      { key: "totalClearances", label: "Total Clearances" },
+      { key: "contestedMarks", label: "Contested Marks" },
+      { key: "uncontestedMarks", label: "Uncontested Marks" },
       { key: "contestedPossessions", label: "Contested Possessions" },
       { key: "uncontestedPossessions", label: "Uncontested Possessions" },
+      { key: "hitouts", label: "Hitouts" },
     ],
   },
   {
-    name: "Effort",
+    name: "Possession & Ball Movement",
+    keys: [
+      { key: "kicks", label: "Kicks" },
+      { key: "handballs", label: "Handballs" },
+      { key: "disposals", label: "Disposals" },
+      { key: "disposalEfficiency", label: "Disposal Efficiency" },
+      { key: "marks", label: "Marks" },
+      { key: "bounces", label: "Bounces" },
+      
+      
+    ],
+  },
+  {
+    name: "Defence & Pressure",
     keys: [
       { key: "tackles", label: "Tackles" },
-      { key: "clearances", label: "Clearances" },
-      { key: "hitouts", label: "Hitouts" },
-      { key: "inside50s", label: "Inside 50s" },
+      { key: "tacklesInside50", label: "Tackles Inside 50" },
+      { key: "onePercenters", label: "One Percenters" },
       { key: "rebound50s", label: "Rebound 50s" },
+    ],
+  },
+  {
+    name: "Discipline & Errors",
+    keys: [
+      { key: "clangers", label: "Clangers" },
+      { key: "freesFor", label: "Frees For" },
+    ],
+  },
+  {
+    name: "Interchange",
+    keys: [
+      { key: "totalInterchangeCount", label: "Total Interchanges" },
     ],
   },
 ];
@@ -306,6 +336,14 @@ export default function MatchStats({ game }: MatchStatsProps) {
   const [rawStats, setRawStats] = useState<RawStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (name: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [name]: !prev[name]
+    }));
+  };
 
   useEffect(() => {
     setIsLoading(true);
@@ -410,22 +448,33 @@ export default function MatchStats({ game }: MatchStatsProps) {
           </div>
         )}
 
-        {groups.map((group) => (
-          <div key={group.name} className="bg-dark-800/60 rounded-xl border border-dark-700/30 overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-dark-700/30 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-dark-400 uppercase tracking-widest">{group.name}</span>
-              <div className="flex items-center gap-3 text-[10px] text-dark-600">
-                <span>{game.homeTeam.shortName}</span>
-                <span>{game.awayTeam.shortName}</span>
-              </div>
+        {groups.map((group) => {
+          const isExpanded = expandedGroups[group.name] || false;
+          return (
+            <div key={group.name} className="bg-dark-800/60 rounded-xl border border-dark-700/30 overflow-hidden">
+              <button
+                onClick={() => toggleGroup(group.name)}
+                className="w-full px-4 py-2.5 border-b border-dark-700/30 flex items-center justify-between hover:bg-dark-700/30 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  {isExpanded ? (
+                    <Minus className="w-3 h-3 text-dark-500" />
+                  ) : (
+                    <Plus className="w-3 h-3 text-dark-500" />
+                  )}
+                  <span className="text-[10px] font-bold text-dark-400 uppercase tracking-widest">{group.name}</span>
+                </div>
+              </button>
+              {isExpanded && (
+                <div className="divide-y divide-dark-700/20">
+                  {group.stats.map((stat) => (
+                    <StatBar key={stat.label} stat={stat} homeColor={homeColor} awayColor={awayColor} />
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="divide-y divide-dark-700/20">
-              {group.stats.map((stat) => (
-                <StatBar key={stat.label} stat={stat} homeColor={homeColor} awayColor={awayColor} />
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
