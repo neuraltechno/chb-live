@@ -6,15 +6,34 @@ export const fetchSuperCoachScores = internalAction({
     homeTeam: v.string(),
     awayTeam: v.string(),
     date: v.string(), // ISO date
+    roundNumber: v.optional(v.number()),
   },
-  handler: async (ctx, { homeTeam, awayTeam, date }) => {
-    console.log(`[FootyInfo] Fetching SC scores for ${homeTeam} vs ${awayTeam} on ${date}`);
+  handler: async (ctx, { homeTeam, awayTeam, date, roundNumber }) => {
+    console.log(`[FootyInfo] Fetching SC scores for ${homeTeam} vs ${awayTeam} on ${date} (Round ${roundNumber ?? 'current'})`);
     try {
       // 1. Fetch round summary to find the match slug
       console.log(`[FootyInfo] Fetching round summary...`);
-      const summaryRes = await fetch("https://api.footyinfo.com/api/round_summary");
-      const summaryData = await summaryRes.json();
-      const matches = summaryData.matches || [];
+      let summaryRes = await fetch("https://api.footyinfo.com/api/round_summary");
+      let summaryData = await summaryRes.json();
+      let matches = summaryData.matches || [];
+
+      // If we have a roundNumber, and it's not the current round, fetch that specific round
+      if (roundNumber !== undefined && summaryData.round_short_name !== String(roundNumber)) {
+        console.log(`[FootyInfo] Target round ${roundNumber} differs from current round ${summaryData.round_short_name}`);
+        const targetRound = (summaryData.rounds || []).find((r: any) => 
+          r.short_name === String(roundNumber) || 
+          (roundNumber === 0 && r.name === "Opening Round")
+        );
+
+        if (targetRound) {
+          console.log(`[FootyInfo] Switching to round: ${targetRound.name} (ID: ${targetRound.id})`);
+          summaryRes = await fetch(`https://api.footyinfo.com/api/round_summary?round_id=${targetRound.id}`);
+          summaryData = await summaryRes.json();
+          matches = summaryData.matches || [];
+        } else {
+          console.log(`[FootyInfo] Could not find round ${roundNumber} in rounds list: ${summaryData.rounds?.map((r: any) => r.short_name).join(', ')}`);
+        }
+      }
 
       // Normalize names for better matching
       const normalize = (name: string) => 
@@ -27,25 +46,42 @@ export const fetchSuperCoachScores = internalAction({
           .replace(/gws giants/g, "gws")
           .replace(/fremantle dockers/g, "fremantle")
           .replace(/west coast eagles/g, "west coast")
+          .replace(/richmond tigers/g, "richmond")
+          .replace(/collingwood magpies/g, "collingwood")
+          .replace(/essendon bombers/g, "essendon")
+          .replace(/st kilda saints/g, "st kilda")
+          .replace(/melbourne demons/g, "melbourne")
+          .replace(/north melbourne kangaroos/g, "north melbourne")
+          .replace(/port adelaide power/g, "port adelaide")
+          .replace(/hawthorn hawks/g, "hawthorn")
+          .replace(/carlton blues/g, "carlton")
           .trim();
 
       const targetHome = normalize(homeTeam);
       const targetAway = normalize(awayTeam);
       const targetDate = date.split("T")[0];
 
+      console.log(`[FootyInfo] Target teams normalized: ${targetHome} vs ${targetAway}`);
+
       // 2. Find matching match
       const match = matches.find((m: any) => {
         const mHome = normalize(m.home_team_full || m.home_team || "");
         const mAway = normalize(m.away_team_full || m.away_team || "");
-        const mDate = m.match_date;
-
-        // Match by teams and date (allowing for slight date mismatch due to timezones)
-        return (mHome === targetHome && mAway === targetAway) || 
-               (mHome === targetAway && mAway === targetHome);
+        
+        // Match by teams (allowing for swapped home/away)
+        const teamMatch = (mHome === targetHome && mAway === targetAway) || 
+                         (mHome === targetAway && mAway === targetHome);
+        
+        if (teamMatch) {
+          console.log(`[FootyInfo] Found match by teams: ${mHome} vs ${mAway}`);
+        }
+        
+        return teamMatch;
       });
 
       if (!match || !match.slug) {
-        console.log(`[FootyInfo] No match found for ${homeTeam} vs ${awayTeam} on ${date}`);
+        console.log(`[FootyInfo] No match found for ${homeTeam} vs ${awayTeam} in round summary`);
+        console.log(`[FootyInfo] Available matches in this round: ${matches.map((m: any) => `${m.home_team_full} vs ${m.away_team_full}`).join(', ')}`);
         return null;
       }
 
@@ -56,7 +92,6 @@ export const fetchSuperCoachScores = internalAction({
       const statsData = await statsRes.json();
 
       // 4. Extract SuperCoach scores and guernsey
-      // FootyInfo returns: { home: { rows: [...] }, away: { rows: [...] } }
       const scScores: Record<string, { sc: number; guernsey: string }> = {};
 
       const processRows = (rows: any[]) => {
@@ -77,6 +112,7 @@ export const fetchSuperCoachScores = internalAction({
       if (statsData.home?.rows) processRows(statsData.home.rows);
       if (statsData.away?.rows) processRows(statsData.away.rows);
 
+      console.log(`[FootyInfo] Successfully extracted ${Object.keys(scScores).length} player scores`);
       return scScores;
     } catch (error) {
       console.error("[FootyInfo] Error fetching SuperCoach scores:", error);
