@@ -445,6 +445,18 @@ export const fetchGameStats = action({
 
     // If cache exists and game is finished, always return it
     if (cached && isFinished) {
+      // If we have match stats but player stats are missing from their dedicated table,
+      // populate the player stats table from the cached match stats.
+      const playerStats = (await ctx.runQuery(api.stats.getPlayerStats, {
+        externalId: args.externalId,
+      })) as any;
+
+      if (!playerStats && cached.stats?.boxscore?.players) {
+        await ctx.runMutation(internal.stats.savePlayerStats, {
+          externalId: args.externalId,
+          stats: cached.stats.boxscore.players,
+        });
+      }
       return cached.stats;
     }
 
@@ -578,6 +590,14 @@ export const fetchGameStats = action({
         stats: result,
         gameId: args.gameId,
       });
+
+      // 3. Cache player stats separately for the PlayerStats component
+      if (players && players.length > 0) {
+        await ctx.runMutation(internal.stats.savePlayerStats, {
+          externalId: args.externalId,
+          stats: players,
+        });
+      }
 
       return result;
     } catch (error: any) {
