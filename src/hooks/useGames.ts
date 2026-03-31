@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Game, SportType } from "@/types";
 
@@ -13,8 +13,6 @@ interface UseGamesOptions {
 
 export function useGames(options: UseGamesOptions = {}) {
   const { selectedLeagues, selectedSport = "all", selectedRound } = options;
-
-  console.log("useGames hook: leagues", selectedLeagues, "sport", selectedSport, "round", selectedRound);
 
   const games = useQuery(api.games.list, {
     leagues: selectedLeagues,
@@ -60,6 +58,8 @@ export function useGames(options: UseGamesOptions = {}) {
     return null;
   }, [games]);
 
+  const syncRoundAction = useAction(api.sync.syncRound);
+
   return {
     games: games || [],
     liveGames,
@@ -70,5 +70,6 @@ export function useGames(options: UseGamesOptions = {}) {
     error,
     lastUpdated,
     refresh: () => {}, // Convex is reactive, no need for manual refresh
+    syncRound: async (round: number) => syncRoundAction({ round }),
   };
 }

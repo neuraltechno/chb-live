@@ -30,11 +30,20 @@ export default function HomePage() {
     error,
     lastUpdated,
     refresh,
+    syncRound,
   } = useGames({
     selectedLeagues: selectedLeagues.length > 0 ? selectedLeagues : undefined,
     selectedSport,
     selectedRound,
   });
+
+  // If we have no games for the selected round, trigger a sync for that round
+  useEffect(() => {
+    const isAflOrAll = selectedSport === "afl" || selectedSport === "all";
+    if (!isLoading && selectedRound !== null && games.length === 0 && isAflOrAll) {
+      syncRound(selectedRound).catch((err) => console.error("Sync round failed:", err));
+    }
+  }, [isLoading, selectedRound, games.length, selectedSport, syncRound]);
 
   // Set default round once we have current round info
   useEffect(() => {

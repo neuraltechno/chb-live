@@ -401,7 +401,7 @@ export default function MatchStats({ game }: MatchStatsProps) {
     );
   }
 
-  if (hasError || !rawStats) return null;
+  if (hasError || !rawStats || !rawStats.home || !rawStats.away) return null;
 
   const homePosRaw = rawStats.home["possessionPct"] ?? rawStats.home["possession"];
   const awayPosRaw = rawStats.away["possessionPct"] ?? rawStats.away["possession"];

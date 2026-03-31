@@ -149,6 +149,7 @@ async function fetchEspnGames(
       const notes = competition?.notes;
       const series = competition?.series;
       const leg = competition?.leg;
+      
       let roundName: string | undefined;
       let legStr: string | undefined;
       let seriesNote: string | undefined;
@@ -230,27 +231,146 @@ async function fetchEspnGames(
   }
 }
 
+// ---------- AFL Specific Fetchers ----------
+
+async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefined = undefined): Promise<Game[]> {
+  const baseUrl = `https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/scoreboard`;
+  const year = new Date().getFullYear();
+  
+  // Note: For historical data (past rounds), ESPN sometimes requires the date range
+  // or a different week parameter. However, ?dates=YEAR&week=N is standard.
+  // Let's try removing dates if we have a week, or using a broader range.
+  let url = `${baseUrl}?limit=100`;
+  if (roundNum !== undefined) {
+    // If it's a number, it's a specific week.
+    url += `&week=${roundNum}`;
+    // Explicitly add the year for AFL - use 2026 for now as we know that's the season
+    url = `https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/scoreboard?dates=2026&week=${roundNum}&limit=100`;
+    console.log(`[AFL Fetch Debug] Using URL: ${url}`);
+  } else {
+    url = `${baseUrl}?limit=50`;
+  }
+
+  try {
+    console.log(`[AFL Fetch] Fetching URL: ${url}`);
+    const res = await fetch(url);
+    const resData = await res.json();
+    const events = resData?.events || [];
+
+    return events.map((event: any) => {
+      const competition = event.competitions?.[0];
+      const homeCompetitor = competition?.competitors?.find((c: any) => c.homeAway === "home");
+      const awayCompetitor = competition?.competitors?.find((c: any) => c.homeAway === "away");
+      const stateStr = competition?.status?.type?.state;
+      const status = mapEspnStatus(stateStr);
+      const showScore = status === "live" || status === "halftime" || status === "finished";
+      const homeScore = homeCompetitor?.score ? parseInt(homeCompetitor.score) : undefined;
+      const awayScore = awayCompetitor?.score ? parseInt(awayCompetitor.score) : undefined;
+
+      let finalRoundNumber = roundNum;
+      const eventRound = event.competitions?.[0]?.round;
+      if (eventRound) {
+          finalRoundNumber = typeof eventRound === 'object' ? eventRound.number : eventRound;
+      }
+
+      // If the event doesn't have a round number but we are in a round loop,
+      // we should trust the loop's roundNum as the authoritative source.
+      if (finalRoundNumber === undefined && roundNum !== undefined) {
+          finalRoundNumber = roundNum;
+      }
+      console.log(`[AFL Fetch Debug] Event: ${event.id}, Final round number: ${finalRoundNumber}`);
+
+      let roundDisplay = `Round ${finalRoundNumber}`;
+      if (finalRoundNumber === 0) roundDisplay = "Opening Round";
+      
+      if (event.season?.slug && event.season?.slug !== "regular-season") {
+        roundDisplay = event.season?.slug || roundDisplay;
+      }
+      
+      if (competition?.series?.title) {
+        roundDisplay = competition.series.title;
+      } else if (competition?.notes?.[0]?.headline && competition.notes[0].headline.includes("Round")) {
+        roundDisplay = competition.notes[0].headline;
+      }
+
+      // If we still have a generic round display, and we know the roundNum from the loop, use it
+      if (roundNum !== undefined && (!roundDisplay || roundDisplay === "undefined" || roundDisplay === "Round undefined")) {
+          roundDisplay = roundNum === 0 ? "Opening Round" : `Round ${roundNum}`;
+      }
+
+      return {
+        id: `afl_${event.id}`,
+        externalId: String(event.id),
+        sport: "afl" as SportType,
+        league: aflLeague,
+        homeTeam: {
+          id: String(homeCompetitor?.id || homeCompetitor?.team?.id || ""),
+          name: homeCompetitor?.team?.displayName || "TBD",
+          shortName: homeCompetitor?.team?.abbreviation || "TBD",
+          logo: homeCompetitor?.team?.logo || "",
+          score: showScore ? homeScore : undefined,
+        },
+        awayTeam: {
+          id: String(awayCompetitor?.id || awayCompetitor?.team?.id || ""),
+          name: awayCompetitor?.team?.displayName || "TBD",
+          shortName: awayCompetitor?.team?.abbreviation || "TBD",
+          logo: awayCompetitor?.team?.logo || "",
+          score: showScore ? awayScore : undefined,
+        },
+        status,
+        startTime: event.date,
+        venue: competition?.venue?.fullName || competition?.venue?.displayName,
+        round: roundDisplay,
+        roundNumber: finalRoundNumber,
+        messageCount: 0,
+        activeUsers: 0,
+      } as Game;
+    });
+  } catch (e: any) {
+    console.error(`[AFL Fetch] Error fetching AFL games for round ${roundNum}:`, e?.message || e);
+    return [];
+  }
+}
+
+async function fetchEspnAflCurrentRoundGames(aflLeague: League): Promise<Game[]> {
+  const baseUrl = `https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/scoreboard`;
+  try {
+    const response = await fetch(`${baseUrl}?limit=1`);
+    const data = await response.json();
+    const currentWeek = data?.week?.number;
+
+    if (currentWeek !== undefined) {
+      console.log(`[AFL Fetch] Detected current week: ${currentWeek}`);
+      return fetchAflGamesByRound(aflLeague, currentWeek);
+    }
+  } catch (e: any) {
+    console.error(`[AFL Fetch] Error detecting current week:`, e?.message || e);
+  }
+  return fetchAflGamesByRound(aflLeague, undefined);
+}
+
 // ---------- Public Actions ----------
 
 export const fetchAllGames = action({
   args: {
     leagueFilter: v.optional(v.array(v.string())),
     deep: v.optional(v.boolean()), // If true, fetch all rounds for relevant leagues (e.g. AFL)
+    round: v.optional(v.number()), // If provided, fetch a specific round (e.g. for AFL)
   },
   handler: async (ctx, args) => {
     const soccerLeagueIds = args.leagueFilter
       ? SOCCER_LEAGUES.filter((l) => args.leagueFilter!.includes(l.id)).map((l) => l.id)
-      : []; // Temporarily disabled: SOCCER_LEAGUES.map((l) => l.id);
+      : [];
 
     const ncaaLeagueIds = args.leagueFilter
       ? NCAA_LEAGUES.filter((l) => args.leagueFilter!.includes(l.id)).map((l) => l.id)
-      : []; // Temporarily disabled: NCAA_LEAGUES.map((l) => l.id);
+      : [];
 
     const aflLeagueIds = args.leagueFilter
       ? AFL_LEAGUES.filter((l) => args.leagueFilter!.includes(l.id)).map((l) => l.id)
       : AFL_LEAGUES.map((l) => l.id);
 
-    const allPromises = [
+    const allPromises: Promise<Game[]>[] = [
       ...soccerLeagueIds.map((id) => {
         const league = SOCCER_LEAGUES.find((l) => l.id === id)!;
         return fetchEspnGames(id, league, "soccer");
@@ -259,104 +379,27 @@ export const fetchAllGames = action({
         const league = NCAA_LEAGUES.find((l) => l.id === id)!;
         return fetchEspnGames(id, league, league.sport);
       }),
-      ...aflLeagueIds.map((id) => {
-        const league = AFL_LEAGUES.find((l) => l.id === id)!;
-        return fetchEspnGames(id, league, "afl");
-      }),
     ];
 
-    // Special case for AFL: if we are fetching AFL, and deep=true, fetch all rounds
-    if (aflLeagueIds.includes("afl") && args.deep) {
+    if (aflLeagueIds.includes("afl")) {
       const aflLeague = AFL_LEAGUES.find((l) => l.id === "afl")!;
-      const baseUrl = `https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/scoreboard`;
-      
-      const rounds = Array.from({ length: 25 }, (_, i) => i);
-      const year = new Date().getFullYear();
-
-      const roundPromises = rounds.map(async (roundNum) => {
-        try {
-          // If we are fetching today's matches, ESPN might return a different format
-          // than if we fetch a specific week. Let's make sure we handle both.
-          // IMPORTANT: If current year is 2026, we fetch 2026.
-          const res = await fetch(`${baseUrl}?dates=${year}&week=${roundNum}&limit=50`);
-          const resData = await res.json();
-          const events = resData?.events || [];
-          
-          if (events.length === 0) {
-            console.log(`[AFL Fetch] No events found for round ${roundNum} using year ${year} and week ${roundNum}`);
-          }
-
-          return events.map((event: any) => {
-            const competition = event.competitions?.[0];
-            const homeCompetitor = competition?.competitors?.find((c: any) => c.homeAway === "home");
-            const awayCompetitor = competition?.competitors?.find((c: any) => c.homeAway === "away");
-            const stateStr = competition?.status?.type?.state;
-            const status = mapEspnStatus(stateStr);
-            const showScore = status === "live" || status === "halftime" || status === "finished";
-            const homeScore = homeCompetitor?.score ? parseInt(homeCompetitor.score) : undefined;
-            const awayScore = awayCompetitor?.score ? parseInt(awayCompetitor.score) : undefined;
-
-            // Use the round parameter from the outer scope as a fallback
-            let finalRoundNumber = roundNum;
-            
-            // Try to parse round number from event data if available
-            const eventRound = event.competitions?.[0]?.round;
-            if (eventRound) {
-                finalRoundNumber = typeof eventRound === 'object' ? eventRound.number : eventRound;
-            }
-
-            let roundDisplay = `Round ${finalRoundNumber}`;
-            if (finalRoundNumber === 0) roundDisplay = "Opening Round";
-            
-            // If ESPN calls it "Round X" but we want our own mapping, we trust our round number
-            if (event.season?.slug !== "regular-season") {
-              roundDisplay = event.season?.slug || roundDisplay;
-            }
-
-            console.log(`[AFL Fetch] Event: ${event.id}, Round: ${finalRoundNumber}, Display: ${roundDisplay}`);
-
-            return {
-              id: `afl_${event.id}`,
-              externalId: String(event.id),
-              sport: "afl" as SportType,
-              league: aflLeague,
-              homeTeam: {
-                id: String(homeCompetitor?.id || homeCompetitor?.team?.id || ""),
-                name: homeCompetitor?.team?.displayName || "TBD",
-                shortName: homeCompetitor?.team?.abbreviation || "TBD",
-                logo: homeCompetitor?.team?.logo || "",
-                score: showScore ? homeScore : undefined,
-              },
-              awayTeam: {
-                id: String(awayCompetitor?.id || awayCompetitor?.team?.id || ""),
-                name: awayCompetitor?.team?.displayName || "TBD",
-                shortName: awayCompetitor?.team?.abbreviation || "TBD",
-                logo: awayCompetitor?.team?.logo || "",
-                score: showScore ? awayScore : undefined,
-              },
-              status,
-              startTime: event.date,
-              venue: competition?.venue?.fullName || competition?.venue?.displayName,
-              round: roundDisplay,
-              roundNumber: finalRoundNumber,
-              messageCount: 0,
-              activeUsers: 0,
-            } as Game;
-          });
-        } catch (e) {
-          return [];
-        }
-      });
-      
-      allPromises.push(...roundPromises);
+      if (args.round !== undefined) {
+        // If a specific round is requested, fetch just that round
+        allPromises.push(fetchAflGamesByRound(aflLeague, args.round));
+      } else if (args.deep) {
+        // If deep sync is requested, fetch all rounds
+        const rounds = Array.from({ length: 25 }, (_, i) => i);
+        const roundPromises = rounds.map(async (roundNum) => fetchAflGamesByRound(aflLeague, roundNum));
+        allPromises.push(...roundPromises);
+      } else {
+        // Default to current round
+        allPromises.push(fetchEspnAflCurrentRoundGames(aflLeague));
+      }
     }
 
     const results = await Promise.all(allPromises);
     const allGames = results.flat();
 
-    // Deduplicate by externalId
-    // If we have a game from the full season fetch and the today's fetch, 
-    // prioritize the one with a roundNumber (usually from the season fetch).
     const uniqueGamesMap = new Map<string, Game>();
     for (const g of allGames) {
       const existing = uniqueGamesMap.get(g.externalId);
@@ -366,19 +409,7 @@ export const fetchAllGames = action({
     }
     const uniqueGames = Array.from(uniqueGamesMap.values());
 
-    return uniqueGames.map((game) => {
-      // For AFL games from fetchEspnGames, ensure roundNumber is set
-      if (game.sport === "afl" && game.roundNumber === undefined) {
-        // We can try to extract it from the 'round' string if it exists
-        if (game.round && game.round.startsWith("Round ")) {
-          const num = parseInt(game.round.replace("Round ", ""));
-          if (!isNaN(num)) game.roundNumber = num;
-        } else if (game.round === "Opening Round") {
-          game.roundNumber = 0;
-        }
-      }
-      return game;
-    }).sort((a, b) => {
+    return uniqueGames.sort((a, b) => {
       const statusOrder: Record<GameStatus, number> = {
         live: 0,
         halftime: 1,
@@ -434,8 +465,20 @@ export const fetchGameStats = action({
       const boxscore = data?.boxscore;
       let players = boxscore?.players || [];
 
-      if (players.length > 0) {
-        console.log(`[Stats Action] Player stats sample for team 0: ${JSON.stringify(players[0].statistics?.[0]?.keys || players[0].statistics?.[0]?.labels)}`);
+      // Extract team statistics for the match stats component
+      const homeStats: Record<string, string> = {};
+      const awayStats: Record<string, string> = {};
+      
+      if (boxscore?.teams) {
+        boxscore.teams.forEach((team: any) => {
+          const side = team.homeAway === "home" ? homeStats : (team.homeAway === "away" ? awayStats : null);
+          if (side) {
+            side.teamId = String(team.team?.id || "");
+            team.statistics?.forEach((stat: any) => {
+              side[stat.name] = stat.displayValue;
+            });
+          }
+        });
       }
 
       // Fetch SuperCoach scores for AFL
@@ -502,106 +545,44 @@ export const fetchGameStats = action({
                       }
                     }
                     return ath;
-                  })
-                }))
+                  }),
+                })),
               }));
             }
           }
-        } catch (scError) {
-          console.error("[Stats Action] FootyInfo error:", scError);
+        } catch (scError: any) {
+          console.error(`[Stats Action] SuperCoach scoring error:`, scError?.message || scError);
         }
       }
 
-      // 1.5. Trim player stats to reduce database bandwidth
-      const trimmedPlayers = players.map((teamData: any) => ({
-        team: {
-          id: teamData.team?.id,
-          displayName: teamData.team?.displayName,
-          logo: teamData.team?.logo,
+      const result = {
+        home: homeStats,
+        away: awayStats,
+        boxscore: {
+          ...boxscore,
+          players,
         },
-        statistics: (teamData.statistics || []).map((category: any) => ({
-          keys: category.keys,
-          labels: category.labels,
-          athletes: (category.athletes || []).map((athleteData: any) => {
-            const player = athleteData.athlete || {};
-            return {
-              athlete: {
-                id: player.id,
-                displayName: player.displayName,
-                jersey: player.jersey,
-                position: player.position ? {
-                  name: player.position.name,
-                  abbreviation: player.position.abbreviation,
-                } : undefined,
-                headshot: player.headshot ? {
-                  href: player.headshot.href,
-                } : undefined,
-              },
-              stats: athleteData.stats,
-              supercoach: athleteData.supercoach,
-              guernsey: athleteData.guernsey,
-            };
-          }),
-        })),
-      }));
+        header: data?.header,
+        pickcenter: data?.pickcenter,
+        againstTheSpread: data?.againstTheSpread,
+        odds: data?.odds,
+        predictive: data?.predictive,
+        winprobability: data?.winprobability,
+        predictor: data?.predictor,
+        standings: data?.standings,
+      };
 
-      // Save trimmed player stats
-      await ctx.runMutation(internal.stats.savePlayerStats, {
-        externalId: args.externalId,
-        stats: trimmedPlayers,
-      });
-
-      const teams: any[] = boxscore?.teams || [];
-
-      console.log(`[Stats Action] Teams from ESPN boxscore: ${JSON.stringify(teams.map(t => ({
-        name: t.team?.displayName,
-        statsCount: t.statistics?.length,
-        statNames: t.statistics?.map((s: any) => s.name)
-      })))}`);
-
-      const homeTeam = teams.find((t: any) => t.homeAway === "home");
-      const awayTeam = teams.find((t: any) => t.homeAway === "away");
-
-      if (!homeTeam || !awayTeam) return cached?.stats || null;
-
-      const homeMap: Record<string, string> = { teamId: String(homeTeam.team?.id || "") };
-      const awayMap: Record<string, string> = { teamId: String(awayTeam.team?.id || "") };
-
-      console.log(`[Stats Action] Mapping stats for ${args.leagueId}. Home stats count: ${homeTeam.statistics?.length}`);
-
-      (homeTeam.statistics || []).forEach((s: any) => {
-        if (s.name && s.displayValue !== undefined) {
-          homeMap[s.name] = String(s.displayValue);
-          console.log(`[Stats Action] Stat: ${s.name} = ${s.displayValue} (${s.label})`);
-        }
-      });
-
-      (awayTeam.statistics || []).forEach((s: any) => {
-        if (s.name && s.displayValue !== undefined) {
-          awayMap[s.name] = String(s.displayValue);
-        }
-      });
-
-      if (
-        Object.keys(homeMap).length === 0 &&
-        Object.keys(awayMap).length === 0
-      ) {
-        return cached?.stats || null;
-      }
-
-      const newStats = { home: homeMap, away: awayMap };
-
-      // 2. Save to cache and detect changes (bot messages)
+      // 2. Cache the result
       await ctx.runMutation(internal.stats.saveStatsAndDetectChanges, {
         externalId: args.externalId,
-        stats: newStats,
+        stats: result,
         gameId: args.gameId,
       });
 
-      return newStats;
-    } catch (error) {
-      console.error("[Stats Action] Error:", error);
-      return cached?.stats || null;
+      return result;
+    } catch (error: any) {
+      console.error(`[Stats Action] Error:`, error?.message || error);
+      return null;
     }
   },
 });

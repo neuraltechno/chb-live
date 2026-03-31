@@ -105,6 +105,10 @@ export const list = query({
         .query("cachedGames")
         .withIndex("by_round", (q) => q.eq("roundNumber", args.round))
         .collect();
+
+      // If we are looking for a specific round and don't have enough games, trigger a sync
+      // but Convex queries are pure, so we can't trigger an action here.
+      // Instead, we just return what we have.
     } else {
       // Default to 14-day window to avoid fetching the entire database
       const now = Date.now();

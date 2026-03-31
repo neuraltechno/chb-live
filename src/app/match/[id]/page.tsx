@@ -24,7 +24,7 @@ function TeamScoreAfl({ team, gameExternalId, leagueId, gameId }: { team: any, g
     fetchStats({ externalId: gameExternalId, leagueId, gameId }).then(setStats);
   }, [gameExternalId, leagueId, gameId, fetchStats]);
 
-  if (!stats) return <span>{team.score}</span>;
+  if (!stats || !stats.home || !stats.away) return <span>{team.score}</span>;
 
   // Find which side matches our passed team ID
   const side = (stats.home.teamId === String(team.id)) ? 'home' : 'away';

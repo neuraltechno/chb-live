@@ -58,10 +58,10 @@ export const saveStatsAndDetectChanges = internalMutation({
       ];
 
       for (const { key, label, icon } of detectors) {
-        const oldHome = parseInt(oldStats.home[key] || "0");
-        const newHome = parseInt(stats.home[key] || "0");
-        const oldAway = parseInt(oldStats.away[key] || "0");
-        const newAway = parseInt(stats.away[key] || "0");
+        const oldHome = parseInt(oldStats.home?.[key] || "0");
+        const newHome = parseInt(stats.home?.[key] || "0");
+        const oldAway = parseInt(oldStats.away?.[key] || "0");
+        const newAway = parseInt(stats.away?.[key] || "0");
 
         if (newHome > oldHome) {
           await ctx.db.insert("messages", {
