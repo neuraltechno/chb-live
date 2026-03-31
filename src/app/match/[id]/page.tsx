@@ -12,8 +12,27 @@ import {
 import { format, parseISO } from "date-fns";
 import MatchStats from "@/components/MatchStats";
 import PlayerStats from "@/components/PlayerStats";
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { useEffect, useState } from "react";
+
+function TeamScoreAfl({ team, gameExternalId, leagueId, gameId }: { team: any, gameExternalId: string, leagueId: string, gameId: string }) {
+  const fetchStats = useAction(api.sportsApi.fetchGameStats);
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    fetchStats({ externalId: gameExternalId, leagueId, gameId }).then(setStats);
+  }, [gameExternalId, leagueId, gameId, fetchStats]);
+
+  if (!stats) return <span>{team.score}</span>;
+
+  // Find which side matches our passed team ID
+  const side = (stats.home.teamId === String(team.id)) ? 'home' : 'away';
+  const goals = stats[side]?.goals || "0";
+  const behinds = stats[side]?.behinds || "0";
+
+  return <span>{goals}.{behinds}.{team.score}</span>;
+}
 
 export default function MatchPage() {
   const params = useParams();
@@ -53,7 +72,7 @@ export default function MatchPage() {
   const startDate = parseISO(game.startTime);
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row bg-dark-950 overflow-hidden">
+    <div className="h-[calc(100vh-64px)] flex flex-col lg:flex-row bg-dark-950 overflow-hidden">
       {/* Column 1: Team Info & Team Stats (15%) */}
       <div className="lg:w-[15%] flex-shrink-0 bg-dark-900 border-r border-dark-700/50 flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-dark-700/50">
@@ -145,19 +164,32 @@ export default function MatchPage() {
       {/* Column 2: Player Stats (70%) */}
       <div className="lg:w-[70%] flex-1 bg-dark-950 flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-dark-700/50 bg-dark-900/50 backdrop-blur-sm z-10 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <span className="w-1.5 h-6 bg-primary-500 rounded-full"></span>
-            Player Statistics
-          </h2>
+          <div className="flex items-center gap-6">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-primary-500 rounded-full"></span>
+              {game.homeTeam.shortName} vs {game.awayTeam.shortName}
+            </h2>
+            <div className="flex items-center gap-4 text-[11px] text-dark-400 border-l border-dark-700/50 pl-6">
+              {game.venue && (
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-primary-500/70" />
+                  <span>{game.venue}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-primary-500/70" />
+                <span>{format(startDate, "MMM d, yyyy · HH:mm")}</span>
+              </div>
+              {game.round && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-dark-600" />
+                  <span className="font-medium text-primary-400">{game.round}</span>
+                </div>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-home" style={{ backgroundColor: '#2563eb' }}></div>
-              <span className="text-xs text-dark-300">{game.homeTeam.shortName}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-away" style={{ backgroundColor: '#dc2626' }}></div>
-              <span className="text-xs text-dark-300">{game.awayTeam.shortName}</span>
-            </div>
+            <LiveBadge status={game.status} minute={game.minute} />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">

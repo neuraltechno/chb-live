@@ -1,10 +1,28 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Game } from "@/types";
 import { User, Shield, Info, ChevronUp, ChevronDown } from "lucide-react";
+
+function TeamScoreAfl({ team, gameExternalId, leagueId, gameId }: { team: any, gameExternalId: string, leagueId: string, gameId: string }) {
+  const fetchStats = useAction(api.sportsApi.fetchGameStats);
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    fetchStats({ externalId: gameExternalId, leagueId, gameId }).then(setStats);
+  }, [gameExternalId, leagueId, gameId, fetchStats]);
+
+  if (!stats) return <span>{team.score}</span>;
+
+  // Use the team ID to find the correct side from the summary stats
+  const side = String(stats.home.teamId) === String(team.id) ? 'home' : 'away';
+  const goals = stats[side]?.goals || "0";
+  const behinds = stats[side]?.behinds || "0";
+
+  return <span>{goals}.{behinds}.{team.score}</span>;
+}
 
 interface PlayerStatsProps {
   game: Game;
@@ -177,7 +195,21 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
                 ) : (
                   <Shield className="w-5 h-5 text-dark-500" />
                 )}
-                <h3 className="font-semibold text-white text-sm truncate">{teamName}</h3>
+                <h3 className="font-semibold text-white text-sm truncate flex items-center gap-2">
+                  {teamName}
+                  <span className="bg-dark-700/50 px-2 py-0.5 rounded text-primary-400 font-bold tabular-nums">
+                    {game.sport === "afl" ? (
+                      <TeamScoreAfl 
+                        team={teamIdx === 0 ? game.homeTeam : game.awayTeam} 
+                        gameExternalId={game.externalId} 
+                        leagueId={game.league.id} 
+                        gameId={game.id} 
+                      />
+                    ) : (
+                      teamIdx === 0 ? game.homeTeam.score : game.awayTeam.score
+                    )}
+                  </span>
+                </h3>
               </div>
 
               <div className="overflow-x-auto">
@@ -222,18 +254,18 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
                   <tbody className="divide-y divide-dark-700/20">
                     {sortedPlayers.map((player) => (
                       <tr key={player.id} className="hover:bg-dark-800/30 transition-colors">
-                        <td className="px-2 py-1.5 flex items-center gap-1.5">
-                          <div className="w-6 h-6 rounded-lg bg-dark-800 border border-dark-700/50 flex-shrink-0 flex items-center justify-center">
-                            <span className="text-[11px] font-bold text-primary-400">
+                        <td className="px-2 py-0.5 flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded bg-dark-800 border border-dark-700/50 flex-shrink-0 flex items-center justify-center">
+                            <span className="text-[10px] font-bold text-primary-400">
                               {player.jersey || "-"}
                             </span>
                           </div>
                           <div className="flex items-center gap-1 min-w-0">
-                            <span className="text-white font-medium truncate text-[13px]">{player.name}</span>
+                            <span className="text-white font-medium truncate text-[12px]">{player.name}</span>
                           </div>
                         </td>
                         {displayStats.map(s => (
-                          <td key={s.key} className="px-0.5 py-1.5 text-center text-dark-200 tabular-nums text-[13px]">
+                          <td key={s.key} className="px-0.5 py-0.5 text-center text-dark-200 tabular-nums text-[12px]">
                             {getStatValue(player, s.key)}
                           </td>
                         ))}

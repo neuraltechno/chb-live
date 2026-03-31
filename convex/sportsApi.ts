@@ -525,8 +525,8 @@ export const fetchGameStats = action({
 
       if (!homeTeam || !awayTeam) return cached?.stats || null;
 
-      const homeMap: Record<string, string> = {};
-      const awayMap: Record<string, string> = {};
+      const homeMap: Record<string, string> = { teamId: String(homeTeam.team?.id || "") };
+      const awayMap: Record<string, string> = { teamId: String(awayTeam.team?.id || "") };
 
       console.log(`[Stats Action] Mapping stats for ${args.leagueId}. Home stats count: ${homeTeam.statistics?.length}`);
 
