@@ -235,6 +235,7 @@ async function fetchEspnGames(
 export const fetchAllGames = action({
   args: {
     leagueFilter: v.optional(v.array(v.string())),
+    deep: v.optional(v.boolean()), // If true, fetch all rounds for relevant leagues (e.g. AFL)
   },
   handler: async (ctx, args) => {
     const soccerLeagueIds = args.leagueFilter
@@ -264,15 +265,11 @@ export const fetchAllGames = action({
       }),
     ];
 
-    // Special case for AFL: if we are fetching AFL, we also want to fetch all rounds
-    if (aflLeagueIds.includes("afl")) {
+    // Special case for AFL: if we are fetching AFL, and deep=true, fetch all rounds
+    if (aflLeagueIds.includes("afl") && args.deep) {
       const aflLeague = AFL_LEAGUES.find((l) => l.id === "afl")!;
       const baseUrl = `https://site.api.espn.com/apis/site/v2/sports/australian-football/afl/scoreboard`;
       
-      // ESPN usually supports fetching by year and week
-      // For AFL, rounds are often called 'weeks' in ESPN API
-      // Opening Round is sometimes Round 1 in ESPN if Round 1 is called Round 2,
-      // OR Opening Round is its own thing. Let's fetch 0 to 24.
       const rounds = Array.from({ length: 25 }, (_, i) => i);
       const year = new Date().getFullYear();
 
@@ -411,8 +408,17 @@ export const fetchGameStats = action({
       externalId: args.externalId,
     })) as any;
 
-    // If cache is fresh (less than 30 seconds old), return it
-    if (cached && Date.now() - cached.lastFetched < 30_000) {
+    // Check game status to see if it's finished
+    const game = (await ctx.runQuery(api.games.get, { id: args.gameId })) as Game | null;
+    const isFinished = game?.status === "finished";
+
+    // If cache exists and game is finished, always return it
+    if (cached && isFinished) {
+      return cached.stats;
+    }
+
+    // If cache is fresh (less than 60 seconds old for live, or exists for scheduled), return it
+    if (cached && Date.now() - cached.lastFetched < 60_000) {
       return cached.stats;
     }
 
@@ -506,10 +512,43 @@ export const fetchGameStats = action({
         }
       }
 
-      // Save player stats
+      // 1.5. Trim player stats to reduce database bandwidth
+      const trimmedPlayers = players.map((teamData: any) => ({
+        team: {
+          id: teamData.team?.id,
+          displayName: teamData.team?.displayName,
+          logo: teamData.team?.logo,
+        },
+        statistics: (teamData.statistics || []).map((category: any) => ({
+          keys: category.keys,
+          labels: category.labels,
+          athletes: (category.athletes || []).map((athleteData: any) => {
+            const player = athleteData.athlete || {};
+            return {
+              athlete: {
+                id: player.id,
+                displayName: player.displayName,
+                jersey: player.jersey,
+                position: player.position ? {
+                  name: player.position.name,
+                  abbreviation: player.position.abbreviation,
+                } : undefined,
+                headshot: player.headshot ? {
+                  href: player.headshot.href,
+                } : undefined,
+              },
+              stats: athleteData.stats,
+              supercoach: athleteData.supercoach,
+              guernsey: athleteData.guernsey,
+            };
+          }),
+        })),
+      }));
+
+      // Save trimmed player stats
       await ctx.runMutation(internal.stats.savePlayerStats, {
         externalId: args.externalId,
-        stats: players,
+        stats: trimmedPlayers,
       });
 
       const teams: any[] = boxscore?.teams || [];

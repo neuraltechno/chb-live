@@ -44,6 +44,7 @@ export default defineSchema({
     externalId: v.string(),
     sport: v.string(),
     leagueId: v.string(),
+    startTime: v.number(), // UTC timestamp
     roundNumber: v.optional(v.number()),
     roundName: v.optional(v.string()),
     data: v.any(),
@@ -51,7 +52,8 @@ export default defineSchema({
   })
     .index("by_externalId", ["externalId"])
     .index("by_sport_league", ["sport", "leagueId"])
-    .index("by_round", ["roundNumber"]),
+    .index("by_round", ["roundNumber"])
+    .index("by_startTime", ["startTime"]),
 
   conversations: defineTable({
     key: v.string(), // Sorted userId1_userId2
@@ -81,11 +83,13 @@ export default defineSchema({
 
   presence: defineTable({
     userId: v.id("users"),
+    username: v.optional(v.string()),
+    avatar: v.optional(v.string()),
     gameId: v.optional(v.string()),
     lastSeen: v.number(),
     isTyping: v.optional(v.boolean()),
   })
-    .index("by_gameId", ["gameId"])
+    .index("by_gameId", ["gameId", "lastSeen"])
     .index("by_userId", ["userId"]),
 
   cachedStats: defineTable({

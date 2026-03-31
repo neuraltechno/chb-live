@@ -64,7 +64,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
 
     const interval = setInterval(() => {
       updatePresence({ gameId });
-    }, 15000);
+    }, 30000);
 
     return () => {
       clearInterval(interval);

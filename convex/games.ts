@@ -22,6 +22,7 @@ export const syncGames = internalMutation({
           lastFetched: now,
           sport: gameData.sport,
           leagueId: gameData.league.id,
+          startTime: new Date(gameData.startTime).getTime(),
           roundNumber: gameData.roundNumber,
           roundName: gameData.round,
         });
@@ -30,6 +31,7 @@ export const syncGames = internalMutation({
           externalId: gameData.externalId,
           sport: gameData.sport,
           leagueId: gameData.league.id,
+          startTime: new Date(gameData.startTime).getTime(),
           roundNumber: gameData.roundNumber,
           roundName: gameData.round,
           data: gameData,
@@ -104,7 +106,17 @@ export const list = query({
         .withIndex("by_round", (q) => q.eq("roundNumber", args.round))
         .collect();
     } else {
-      games = await ctx.db.query("cachedGames").collect();
+      // Default to 14-day window to avoid fetching the entire database
+      const now = Date.now();
+      const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+      const sevenDaysFromNow = now + 7 * 24 * 60 * 60 * 1000;
+      
+      games = await ctx.db
+        .query("cachedGames")
+        .withIndex("by_startTime", (q) => 
+          q.gt("startTime", sevenDaysAgo).lt("startTime", sevenDaysFromNow)
+        )
+        .collect();
     }
 
     if (args.leagues && args.leagues.length > 0) {
@@ -123,9 +135,41 @@ export const list = query({
       return true;
     });
 
-    // Sort by status and time (similar to original logic)
+    // Sort and project only necessary fields for the list view
     return uniqueGames
-      .map((g) => g.data)
+      .map((g) => {
+        const d = g.data;
+        return {
+          id: d.id,
+          externalId: d.externalId,
+          status: d.status,
+          startTime: d.startTime,
+          league: d.league,
+          round: d.round,
+          roundNumber: d.roundNumber,
+          leg: d.leg,
+          seriesNote: d.seriesNote,
+          minute: d.minute,
+          venue: d.venue,
+          homeTeam: {
+            id: d.homeTeam.id,
+            name: d.homeTeam.name,
+            shortName: d.homeTeam.shortName,
+            logo: d.homeTeam.logo,
+            score: d.homeTeam.score,
+          },
+          awayTeam: {
+            id: d.awayTeam.id,
+            name: d.awayTeam.name,
+            shortName: d.awayTeam.shortName,
+            logo: d.awayTeam.logo,
+            score: d.awayTeam.score,
+          },
+          messageCount: d.messageCount,
+          activeUsers: d.activeUsers,
+          sport: d.sport,
+        };
+      })
       .sort((a, b) => {
         const statusOrder: Record<string, number> = {
           live: 0,
@@ -151,6 +195,39 @@ export const get = query({
       .query("cachedGames")
       .withIndex("by_externalId", (q) => q.eq("externalId", args.id.split("_").pop()!))
       .unique();
-    return game?.data || null;
+    if (!game) return null;
+    
+    const d = game.data;
+    // Projection for detail view (can include more fields than list if needed)
+    return {
+      id: d.id,
+      externalId: d.externalId,
+      status: d.status,
+      startTime: d.startTime,
+      league: d.league,
+      round: d.round,
+          roundNumber: d.roundNumber,
+          leg: d.leg,
+          seriesNote: d.seriesNote,
+          minute: d.minute,
+          venue: d.venue,
+      homeTeam: {
+        id: d.homeTeam.id,
+        name: d.homeTeam.name,
+        shortName: d.homeTeam.shortName,
+        logo: d.homeTeam.logo,
+        score: d.homeTeam.score,
+      },
+      awayTeam: {
+        id: d.awayTeam.id,
+        name: d.awayTeam.name,
+        shortName: d.awayTeam.shortName,
+        logo: d.awayTeam.logo,
+        score: d.awayTeam.score,
+      },
+      messageCount: d.messageCount,
+      activeUsers: d.activeUsers,
+      sport: d.sport,
+    };
   },
 });
