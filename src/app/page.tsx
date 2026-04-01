@@ -6,6 +6,7 @@ import { useGameStore } from "@/lib/store";
 import MatchList from "@/components/MatchList";
 import LeagueFilter from "@/components/LeagueFilter";
 import TeamSearch from "@/components/TeamSearch";
+import Top10Supercoach from "@/components/Top10Supercoach";
 import { RefreshCw, Zap, TrendingUp, Globe } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Game } from "@/types";
@@ -142,14 +143,33 @@ export default function HomePage() {
 
       {/* Match Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <MatchList
-          games={filteredGames}
-          liveGames={filteredLive}
-          scheduledGames={filteredScheduled}
-          finishedGames={filteredFinished}
-          isLoading={isLoading}
-          error={error}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-3">
+            <MatchList
+              games={filteredGames}
+              liveGames={filteredLive}
+              scheduledGames={filteredScheduled}
+              finishedGames={filteredFinished}
+              isLoading={isLoading}
+              error={error}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 space-y-6">
+              <Top10Supercoach round={selectedRound ?? undefined} />
+              
+              {/* Optional: Add more sidebar widgets here in the future */}
+              <div className="bg-dark-900/30 border border-dark-800/30 rounded-2xl p-6">
+                <h4 className="text-xs font-bold text-dark-400 uppercase tracking-widest mb-3">
+                  Quick Tips
+                </h4>
+                <p className="text-xs text-dark-500 leading-relaxed">
+                  Supercoach scores are updated live during AFL matches. The leaderboard shows the top performers for the selected round.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Footer */}

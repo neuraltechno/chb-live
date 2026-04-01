@@ -120,6 +120,7 @@ export default defineSchema({
     timestamp: v.number(), // Last updated timestamp
   })
     .index("by_match_player", ["externalMatchId", "playerId"])
+    .index("by_match_score", ["externalMatchId", "score"]) // For Match Top 10
     .index("by_score", ["score"]) // For global Top 10
     .index("by_team_score", ["teamId", "score"]) // For Team Top 10
     .index("by_round_score", ["round", "score"]) // For Round Top 10

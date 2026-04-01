@@ -443,10 +443,9 @@ export const fetchGameStats = action({
     const game = (await ctx.runQuery(api.games.get, { id: args.gameId })) as Game | null;
     const isFinished = game?.status === "finished";
 
-    // If cache exists and game is finished, always return it
+    // If cache exists and game is finished, check if we need SuperCoach scores
     if (cached && isFinished) {
-      // If we have match stats but player stats are missing from their dedicated table,
-      // populate the player stats table from the cached match stats.
+      // 1. Populate player stats if missing (for all sports)
       const playerStats = (await ctx.runQuery(api.stats.getPlayerStats, {
         externalId: args.externalId,
       })) as any;
@@ -457,7 +456,20 @@ export const fetchGameStats = action({
           stats: cached.stats.boxscore.players,
         });
       }
-      return cached.stats;
+
+      // 2. Check SuperCoach scores for AFL
+      if (args.leagueId === "afl") {
+        const scScores = (await ctx.runQuery(api.stats.getMatchSupercoachScores, {
+          externalMatchId: args.externalId,
+        })) as any[];
+        
+        if (scScores && scScores.length > 0) {
+          return cached.stats;
+        }
+        // If no SC scores yet, we fall through to fetch them from FootyInfo
+      } else {
+        return cached.stats;
+      }
     }
 
     // If cache is fresh (less than 60 seconds old for live, or exists for scheduled), return it

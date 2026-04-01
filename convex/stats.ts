@@ -168,6 +168,17 @@ export const getTopSupercoachScores = query({
   },
 });
 
+export const getMatchSupercoachScores = query({
+  args: { externalMatchId: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, { externalMatchId, limit }) => {
+    return await ctx.db
+      .query("supercoachScores")
+      .withIndex("by_match_score", (q) => q.eq("externalMatchId", externalMatchId))
+      .order("desc")
+      .take(limit || 10);
+  },
+});
+
 /**
  * Backfill function to populate supercoachScores for past games.
  * This can be run manually from the Convex dashboard.

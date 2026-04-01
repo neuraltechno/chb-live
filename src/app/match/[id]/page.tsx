@@ -12,6 +12,7 @@ import {
 import { format, parseISO } from "date-fns";
 import MatchStats from "@/components/MatchStats";
 import PlayerStats from "@/components/PlayerStats";
+import MatchSupercoachLeaderboard from "@/components/MatchSupercoachLeaderboard";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useEffect, useState } from "react";
@@ -157,6 +158,13 @@ export default function MatchPage() {
             </div>
           </div>
 
+          {game.sport === "afl" && (
+            <MatchSupercoachLeaderboard
+              externalMatchId={game.externalId}
+              homeTeam={game.homeTeam}
+              awayTeam={game.awayTeam}
+            />
+          )}
           <MatchStats game={game} />
         </div>
       </div>
