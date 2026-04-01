@@ -10,7 +10,7 @@ This plan outlines a highly efficient and searchable approach for tracking Super
 
 ## Technical Details
 
-### 1. Enhanced Database Schema
+### Phase 1. Enhanced Database Schema
 The `supercoachScores` table in `convex/schema.ts` will store one record per player per match, enriched with metadata.
 
 ```typescript
@@ -36,17 +36,12 @@ The `supercoachScores` table in `convex/schema.ts` will store one record per pla
     .index("by_player", ["playerId", "timestamp"]); // For Player history
 ```
 
-### 2. Live Update Logic (`convex/stats.ts`)
+### Phase 2. Live Update Logic (`convex/stats.ts`)
 - Implement `upsertSupercoachScores` mutation.
 - This mutation will "upsert" (insert or update) records for players in a match.
 - By updating the same record as the game progresses, we maintain a small footprint while keeping the "Top 10" live.
 
-### 3. Backfill Strategy
-- Create a `backfillSupercoachScores` internal mutation.
-- This will scan all existing `cachedPlayerStats` and populate the new table.
-- This ensures the leaderboard is immediately populated with historical bests.
-
-### 4. Interactive UI
+### Phase 3. Interactive UI
 
 #### A. Game Page Integration (`src/app/match/[id]/page.tsx`)
 - **Location**: This visual will be added just above the **"Match Statistics"** section.
@@ -60,7 +55,7 @@ The `supercoachScores` table in `convex/schema.ts` will store one record per pla
 - **Contextual Updates**: The leaderboard automatically updates its data based on the round selected by the **Round Filter** on the home page.
 - **Query**: Uses `getTopSupercoachScores` with a filter for the active round.
 
-### 5. Future Ideas (Enabled by this Schema)
+### Phase 4. Future Ideas (Enabled by this Schema)
 - **Team of the Week**: Automatically generate the highest-scoring 22 players from the current round.
 - **Player Stats Page**: Show a chart of a player's Supercoach performance over the season.
 - **Rivalry Stats**: See which players consistently score highest against certain opponents.

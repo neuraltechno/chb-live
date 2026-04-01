@@ -103,4 +103,25 @@ export default defineSchema({
     stats: v.any(),
     lastFetched: v.number(),
   }).index("by_externalId", ["externalId"]),
+
+  supercoachScores: defineTable({
+    playerId: v.string(), // Normalized player name or ID
+    playerName: v.string(), // Display name
+    playerImage: v.optional(v.string()),
+    externalMatchId: v.string(), // ESPN match ID (e.g. "401646704")
+    gameId: v.optional(v.string()), // Convex internal ID (e.g. "afl_401646704")
+    score: v.number(), // Latest/Final Supercoach score
+    round: v.optional(v.number()), // Round number
+    roundName: v.optional(v.string()),
+    teamId: v.string(), // Player's team ID
+    teamName: v.string(), // Player's team name
+    opponentId: v.optional(v.string()),
+    opponentName: v.optional(v.string()),
+    timestamp: v.number(), // Last updated timestamp
+  })
+    .index("by_match_player", ["externalMatchId", "playerId"])
+    .index("by_score", ["score"]) // For global Top 10
+    .index("by_team_score", ["teamId", "score"]) // For Team Top 10
+    .index("by_round_score", ["round", "score"]) // For Round Top 10
+    .index("by_player", ["playerId", "timestamp"]), // For Player history
 });

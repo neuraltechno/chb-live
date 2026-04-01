@@ -496,16 +496,19 @@ export const fetchGameStats = action({
       // Fetch SuperCoach scores for AFL
       if (args.leagueId === "afl") {
         try {
-          const game = data.header?.competitions?.[0];
-          const homeTeam = game?.competitors?.find((c: any) => c.homeAway === "home")?.team?.displayName;
-          const awayTeam = game?.competitors?.find((c: any) => c.homeAway === "away")?.team?.displayName;
-          const startTime = data.header?.competitions?.[0]?.date;
-          const roundNumber = data.header?.week;
+          const competition = data.header?.competitions?.[0];
+          const homeTeamInfo = competition?.competitors?.find((c: any) => c.homeAway === "home");
+          const awayTeamInfo = competition?.competitors?.find((c: any) => c.homeAway === "away");
+          const homeTeamName = homeTeamInfo?.team?.displayName;
+          const awayTeamName = awayTeamInfo?.team?.displayName;
+          const startTime = competition?.date;
+          const roundData = data.header?.week;
+          const roundNumber = typeof roundData === "object" ? roundData.number : roundData;
 
-          if (homeTeam && awayTeam && startTime) {
+          if (homeTeamName && awayTeamName && startTime) {
             const scScores = (await ctx.runAction(internal.footyinfo.fetchSuperCoachScores, {
-              homeTeam,
-              awayTeam,
+              homeTeam: homeTeamName,
+              awayTeam: awayTeamName,
               date: startTime,
               roundNumber,
             })) as Record<string, { sc: number; guernsey: string }> | null;
@@ -515,51 +518,83 @@ export const fetchGameStats = action({
               
               // Normalize the keys in scScores once
               const normalizeForMatch = (s: string) => s.replace(/[,.]/g, "").toLowerCase().trim();
-              const normalizedScScores: Record<string, any> = {};
+              const normalizedScScores: Record<string, { sc: number; guernsey: string }> = {};
               Object.entries(scScores).forEach(([k, v]) => {
                 normalizedScScores[normalizeForMatch(k)] = v;
               });
 
-              // Inject SuperCoach scores and guernsey into players data
-              players = players.map((teamData: any) => ({
-                ...teamData,
-                statistics: (teamData.statistics || []).map((category: any) => ({
-                  ...category,
-                  athletes: (category.athletes || []).map((athleteData: any) => {
-                    const ath = { ...athleteData };
-                    if (ath.athlete && ath.athlete.displayName) {
-                      const name = ath.athlete.displayName.toLowerCase();
-                      const parts = name.split(" ");
-                      const firstName = parts[0];
-                      const initial = firstName.charAt(0);
-                      const fullLastName = parts.slice(1).join(" ");
-                      
-                      const nameNorm = normalizeForMatch(name);
-                      const reversedNorm = parts.length > 1 ? normalizeForMatch(`${fullLastName} ${firstName}`) : nameNorm;
-                      const shortNameNorm = parts.length > 1 ? normalizeForMatch(`${initial} ${fullLastName}`) : nameNorm;
-                      
-                      const data = normalizedScScores[reversedNorm] ||
-                                   normalizedScScores[shortNameNorm] ||
-                                   normalizedScScores[nameNorm] ||
-                                   (parts.length > 2 ? normalizedScScores[normalizeForMatch(`${parts[parts.length - 2]} ${parts[parts.length - 1]}`)] : undefined);
+              const flatScoresToUpsert: any[] = [];
 
-                      if (data) {
-                        return {
-                          ...ath,
-                          supercoach: data.sc,
-                          guernsey: data.guernsey || ath.guernsey,
-                          mappedStats: {
-                            ...(ath.mappedStats || {}),
-                            sc: data.sc,
-                            guernsey: data.guernsey || ath.guernsey
-                          }
-                        };
+              // Inject SuperCoach scores and guernsey into players data
+              players = players.map((teamData: any) => {
+                const teamId = String(teamData.team?.id || "");
+                const teamName = teamData.team?.displayName || "";
+                const isHome = teamId === String(homeTeamInfo?.team?.id);
+                const opponentInfo = isHome ? awayTeamInfo : homeTeamInfo;
+
+                return {
+                  ...teamData,
+                  statistics: (teamData.statistics || []).map((category: any) => ({
+                    ...category,
+                    athletes: (category.athletes || []).map((athleteData: any) => {
+                      const ath = { ...athleteData };
+                      if (ath.athlete && ath.athlete.displayName) {
+                        const name = ath.athlete.displayName.toLowerCase();
+                        const parts = name.split(" ");
+                        const firstName = parts[0];
+                        const initial = firstName.charAt(0);
+                        const fullLastName = parts.slice(1).join(" ");
+                        
+                        const nameNorm = normalizeForMatch(name);
+                        const reversedNorm = parts.length > 1 ? normalizeForMatch(`${fullLastName} ${firstName}`) : nameNorm;
+                        const shortNameNorm = parts.length > 1 ? normalizeForMatch(`${initial} ${fullLastName}`) : nameNorm;
+                        
+                        const scData = normalizedScScores[reversedNorm] ||
+                                     normalizedScScores[shortNameNorm] ||
+                                     normalizedScScores[nameNorm] ||
+                                     (parts.length > 2 ? normalizedScScores[normalizeForMatch(`${parts[parts.length - 2]} ${parts[parts.length - 1]}`)] : undefined);
+
+                        if (scData) {
+                          // Collect for bulk upsert
+                          flatScoresToUpsert.push({
+                            playerId: String(ath.athlete.id),
+                            playerName: ath.athlete.displayName,
+                            playerImage: ath.athlete.headshot?.href || ath.athlete.headshot,
+                            externalMatchId: args.externalId,
+                            gameId: args.gameId,
+                            score: scData.sc,
+                            round: roundNumber,
+                            roundName: data.header?.season?.name,
+                            teamId,
+                            teamName,
+                            opponentId: String(opponentInfo?.team?.id || ""),
+                            opponentName: opponentInfo?.team?.displayName || "",
+                          });
+
+                          return {
+                            ...ath,
+                            supercoach: scData.sc,
+                            guernsey: scData.guernsey || ath.guernsey,
+                            mappedStats: {
+                              ...(ath.mappedStats || {}),
+                              sc: scData.sc,
+                              guernsey: scData.guernsey || ath.guernsey
+                            }
+                          };
+                        }
                       }
-                    }
-                    return ath;
-                  }),
-                })),
-              }));
+                      return ath;
+                    }),
+                  })),
+                };
+              });
+
+              // Bulk upsert to supercoachScores table
+              if (flatScoresToUpsert.length > 0) {
+                await ctx.runMutation(internal.stats.upsertSupercoachScores, {
+                  scores: flatScoresToUpsert,
+                });
+              }
             }
           }
         } catch (scError: any) {
