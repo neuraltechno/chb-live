@@ -14,6 +14,8 @@ function MatchCard({ game, onClick }: MatchCardProps) {
   const isFinished = game.status === "finished";
   const isScheduled = game.status === "scheduled";
 
+  console.log(`[MatchCard Debug] Game ${game.id} statusDisplay:`, game.statusDisplay);
+
   const startDate = parseISO(game.startTime);
   const timeString = format(startDate, "HH:mm");
   const dateString = isToday(startDate)
@@ -158,6 +160,15 @@ function MatchCard({ game, onClick }: MatchCardProps) {
               </span>
             )}
           </div>
+
+          {/* Status Display (Middle Column / Centered between teams area) */}
+          {game.statusDisplay && game.statusDisplay !== "undefined" && (
+            <div className="flex justify-center -mt-1.5 mb-0.5">
+              <span className="text-[10px] font-bold text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded-full border border-primary-500/20">
+                {game.statusDisplay}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Footer - Chat & Users info */}

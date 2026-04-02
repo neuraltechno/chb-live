@@ -43,6 +43,12 @@ export default function MatchPage() {
   const game = useQuery(api.games.get, { id: gameId });
   const isLoading = game === undefined;
 
+  useEffect(() => {
+    if (game) {
+      console.log(`[MatchPage Debug] Full Game Data:`, JSON.stringify(game, null, 2));
+    }
+  }, [game]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -96,11 +102,19 @@ export default function MatchPage() {
                 <LiveBadge status={game.status} minute={game.minute} />
               </div>
 
-              {(game.round || game.leg || game.seriesNote) && (
+              {(game.round && game.round !== "undefined" && game.round !== "Round undefined") && (
                 <div className="flex flex-wrap items-center gap-2 mb-5">
-                  {game.round && <span className="text-[11px] font-medium text-primary-400 bg-primary-500/10 px-2 py-1 rounded-md">{game.round}</span>}
+                  <span className="text-[11px] font-medium text-primary-400 bg-primary-500/10 px-2 py-1 rounded-md">{game.round}</span>
                   {game.leg && <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md">{game.leg}</span>}
                   {game.seriesNote && <span className="text-[11px] text-dark-400">{game.seriesNote}</span>}
+                </div>
+              )}
+
+              {game.statusDisplay && game.statusDisplay !== "undefined" && (
+                <div className="flex justify-center mb-6">
+                  <span className="text-[11px] font-bold text-primary-400 bg-primary-500/10 px-3 py-1 rounded-full border border-primary-500/20 shadow-sm shadow-primary-500/5">
+                    {game.statusDisplay}
+                  </span>
                 </div>
               )}
 
@@ -128,7 +142,12 @@ export default function MatchPage() {
                       <p className="text-lg font-semibold text-dark-300">{format(startDate, "HH:mm")}</p>
                     </div>
                   )}
-                  {isLive && game.minute && <span className="mt-1 text-xs text-red-400 font-medium">{game.minute}'</span>}
+                  {game.statusDisplay && game.statusDisplay !== "undefined" && (
+                    <span className="mt-1 text-xs text-primary-400 font-bold bg-primary-500/10 px-2 py-0.5 rounded-full border border-primary-500/20">
+                      {game.statusDisplay}
+                    </span>
+                  )}
+                  {isLive && game.minute && (!game.statusDisplay || game.statusDisplay === "undefined") && <span className="mt-1 text-xs text-red-400 font-medium">{game.minute}'</span>}
                 </div>
 
                 <div className="flex-1 flex flex-col items-center text-center">
@@ -188,10 +207,16 @@ export default function MatchPage() {
                 <Calendar className="w-3.5 h-3.5 text-primary-500/70" />
                 <span>{format(startDate, "MMM d, yyyy · HH:mm")}</span>
               </div>
-              {game.round && (
+              {(game.round && game.round !== "undefined" && game.round !== "Round undefined") && (
                 <div className="flex items-center gap-1.5">
                   <span className="w-1 h-1 rounded-full bg-dark-600" />
                   <span className="font-medium text-primary-400">{game.round}</span>
+                </div>
+              )}
+              {game.statusDisplay && game.statusDisplay !== "undefined" && (
+                <div className="flex items-center gap-1.5 border-l border-dark-700/50 pl-6">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="font-bold text-primary-400">{game.statusDisplay}</span>
                 </div>
               )}
             </div>

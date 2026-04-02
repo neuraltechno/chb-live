@@ -25,6 +25,7 @@ export const syncGames = internalMutation({
           startTime: new Date(gameData.startTime).getTime(),
           roundNumber: gameData.roundNumber,
           roundName: gameData.round,
+          statusDisplay: gameData.statusDisplay,
         });
       } else {
         await ctx.db.insert("cachedGames", {
@@ -34,6 +35,7 @@ export const syncGames = internalMutation({
           startTime: new Date(gameData.startTime).getTime(),
           roundNumber: gameData.roundNumber,
           roundName: gameData.round,
+          statusDisplay: gameData.statusDisplay,
           data: gameData,
           lastFetched: now,
         });
@@ -172,6 +174,7 @@ export const list = query({
           messageCount: d.messageCount,
           activeUsers: d.activeUsers,
           sport: d.sport,
+          statusDisplay: g.statusDisplay || d.statusDisplay,
         };
       })
       .sort((a, b) => {
@@ -215,6 +218,7 @@ export const get = query({
           seriesNote: d.seriesNote,
           minute: d.minute,
           venue: d.venue,
+          statusDisplay: game.statusDisplay || d.statusDisplay,
       homeTeam: {
         id: d.homeTeam.id,
         name: d.homeTeam.name,

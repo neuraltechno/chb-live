@@ -93,6 +93,20 @@ export const saveStatsAndDetectChanges = internalMutation({
         lastFetched: Date.now(),
       });
     }
+
+    // Update game root statusDisplay if present in stats
+    if (gameId && stats.statusDisplay) {
+      const gameRecord = await ctx.db
+        .query("cachedGames")
+        .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
+        .unique();
+      if (gameRecord) {
+        await ctx.db.patch(gameRecord._id, {
+          statusDisplay: stats.statusDisplay,
+          data: { ...gameRecord.data, statusDisplay: stats.statusDisplay },
+        });
+      }
+    }
   },
 });
 

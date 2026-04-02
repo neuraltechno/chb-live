@@ -47,6 +47,7 @@ export default defineSchema({
     startTime: v.number(), // UTC timestamp
     roundNumber: v.optional(v.number()),
     roundName: v.optional(v.string()),
+    statusDisplay: v.optional(v.string()),
     data: v.any(),
     lastFetched: v.number(),
   })

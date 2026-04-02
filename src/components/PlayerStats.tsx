@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Game } from "@/types";
 import { User, Shield, Info, ChevronUp, ChevronDown } from "lucide-react";
+import SCIncreaseBadge from "./SCIncreaseBadge";
 
 function TeamScoreAfl({ team, gameExternalId, leagueId, gameId }: { team: any, gameExternalId: string, leagueId: string, gameId: string }) {
   const fetchStats = useAction(api.sportsApi.fetchGameStats);
@@ -35,12 +36,83 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
     direction: "desc"
   });
 
+  // Track SC score increases for AFL matches
+  const previousScoresRef = useRef<Record<string, number>>({});
+  const [scIncreases, setScIncreases] = useState<Record<string, { increase: number; timestamp: number }>>({});
+
   const handleSort = (key: string) => {
     setSortConfig(prev => ({
       key,
       direction: prev.key === key && prev.direction === "desc" ? "asc" : "desc"
     }));
   };
+
+  // Detect SC score changes when stats update
+  useEffect(() => {
+    if (!stats || game.sport !== "afl" || !Array.isArray(stats)) return;
+
+    const newIncreases: Record<string, { increase: number; timestamp: number }> = {};
+    const currentScores: Record<string, number> = {};
+
+    stats.forEach((teamData: any, teamIdx: number) => {
+      teamData.statistics?.forEach((category: any) => {
+        category.athletes?.forEach((athlete: any) => {
+          const player = athlete.athlete;
+          if (!player) return;
+
+          const playerKey = `${teamIdx}-${player.id}`;
+          const scScore = athlete.supercoach !== undefined ? Number(athlete.supercoach) : undefined;
+
+          if (scScore !== undefined) {
+            currentScores[playerKey] = scScore;
+            const previousScore = previousScoresRef.current[playerKey];
+
+            if (previousScore !== undefined && scScore > previousScore) {
+              const increase = scScore - previousScore;
+              newIncreases[playerKey] = {
+                increase,
+                timestamp: Date.now(),
+              };
+            }
+          }
+        });
+      });
+    });
+
+    // Merge with existing increases (keep any that haven't expired yet)
+    setScIncreases(prev => {
+      const now = Date.now();
+      const activeIncreases = Object.entries(prev).reduce((acc, [key, value]) => {
+        if (now - value.timestamp < 5000) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, { increase: number; timestamp: number }>);
+
+      return { ...activeIncreases, ...newIncreases };
+    });
+
+    // Update previous scores reference
+    previousScoresRef.current = currentScores;
+  }, [stats, game.sport]);
+
+  // Cleanup expired increases periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setScIncreases(prev => {
+        const now = Date.now();
+        const active: Record<string, { increase: number; timestamp: number }> = {};
+        Object.entries(prev).forEach(([key, value]) => {
+          if (now - value.timestamp < 5000) {
+            active[key] = value;
+          }
+        });
+        return active;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   if (stats === undefined) {
     return (
@@ -265,8 +337,13 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
                           </div>
                         </td>
                         {displayStats.map(s => (
-                          <td key={s.key} className="px-0.5 py-0.5 text-center text-dark-200 tabular-nums text-[12px]">
-                            {getStatValue(player, s.key)}
+                          <td key={s.key} className="relative px-0.5 py-0.5 pt-4 text-center text-dark-200 tabular-nums text-[12px]">
+                            <div className="flex items-center justify-center">
+                              {getStatValue(player, s.key)}
+                            </div>
+                            <div className={`absolute top-0 left-0 right-0 flex justify-center pointer-events-none transition-opacity duration-200 ${s.key === "sc" && isAfl && scIncreases[`${teamIdx}-${player.id}`] ? "opacity-100" : "opacity-0"}`}>
+                              <SCIncreaseBadge increase={scIncreases[`${teamIdx}-${player.id}`]?.increase ?? 0} />
+                            </div>
                           </td>
                         ))}
                       </tr>

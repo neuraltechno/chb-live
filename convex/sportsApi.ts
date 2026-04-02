@@ -257,6 +257,38 @@ async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefi
     const resData = await res.json();
     const events = resData?.events || [];
 
+    // Fetch FootyInfo summary once for the whole round to get status display (sts)
+    let footyInfoMatches: any[] = [];
+    try {
+      const summaryRes = await fetch("https://api.footyinfo.com/api/round_summary");
+      const summaryData = await summaryRes.json();
+      footyInfoMatches = summaryData.matches || [];
+    } catch (fiError) {
+      console.error(`[AFL Fetch] Failed to fetch FootyInfo summary:`, fiError);
+    }
+
+    // Normalize names for better matching
+    const normalize = (name: string) => 
+      name.toLowerCase()
+        .replace(/sydney swans/g, "sydney")
+        .replace(/geelong cats/g, "geelong")
+        .replace(/adelaide crows/g, "adelaide")
+        .replace(/brisbane lions/g, "brisbane")
+        .replace(/gold coast suns/g, "gold coast")
+        .replace(/gws giants/g, "gws")
+        .replace(/fremantle dockers/g, "fremantle")
+        .replace(/west coast eagles/g, "west coast")
+        .replace(/richmond tigers/g, "richmond")
+        .replace(/collingwood magpies/g, "collingwood")
+        .replace(/essendon bombers/g, "essendon")
+        .replace(/st kilda saints/g, "st kilda")
+        .replace(/melbourne demons/g, "melbourne")
+        .replace(/north melbourne kangaroos/g, "north melbourne")
+        .replace(/port adelaide power/g, "port adelaide")
+        .replace(/hawthorn hawks/g, "hawthorn")
+        .replace(/carlton blues/g, "carlton")
+        .trim();
+
     return events.map((event: any) => {
       const competition = event.competitions?.[0];
       const homeCompetitor = competition?.competitors?.find((c: any) => c.homeAway === "home");
@@ -298,6 +330,37 @@ async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefi
           roundDisplay = roundNum === 0 ? "Opening Round" : `Round ${roundNum}`;
       }
 
+      // Try to find matching FootyInfo match for sts
+      let statusDisplay: string | undefined;
+      // ALWAYS try to find status if it's an AFL game, even if not live (could be finished/scheduled)
+      if (aflLeague.id === "afl") {
+        const targetHome = normalize(homeCompetitor?.team?.displayName || "");
+        const targetAway = normalize(awayCompetitor?.team?.displayName || "");
+        console.log(`[AFL Fetch Debug] Looking for match: ${targetHome} vs ${targetAway}. Matches in FI: ${footyInfoMatches.length}`);
+        const fiMatch = footyInfoMatches.find((m: any) => {
+          const mHome = normalize(m.home_team_full || m.home_team || "");
+          const mAway = normalize(m.away_team_full || m.away_team || "");
+          
+          // Match by teams (allowing for swapped home/away)
+          const isMatch = (mHome === targetHome && mAway === targetAway) || 
+                          (mHome === targetAway && mAway === targetHome);
+          
+          if (isMatch) {
+            console.log(`[AFL Fetch Debug] MATCHED: ${mHome} vs ${mAway} with ${targetHome} vs ${targetAway}`);
+          }
+          return isMatch;
+        });
+        if (fiMatch) {
+          statusDisplay = (fiMatch.sts && fiMatch.sts !== "undefined") ? fiMatch.sts : undefined;
+          console.log(`[AFL Fetch Debug] Found match for ${event.id}: ${targetHome} vs ${targetAway}. sts: ${fiMatch.sts}, statusDisplay: ${statusDisplay}`);
+        } else {
+          console.log(`[AFL Fetch Debug] No FootyInfo match for ${event.id} (${targetHome} vs ${targetAway}).`);
+          if (footyInfoMatches.length > 0) {
+            console.log(`[AFL Fetch Debug] First few FI matches: ${footyInfoMatches.slice(0, 3).map(m => `${m.home_team} vs ${m.away_team}`).join(', ')}`);
+          }
+        }
+      }
+
       return {
         id: `afl_${event.id}`,
         externalId: String(event.id),
@@ -322,6 +385,7 @@ async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefi
         venue: competition?.venue?.fullName || competition?.venue?.displayName,
         round: roundDisplay,
         roundNumber: finalRoundNumber,
+        statusDisplay,
         messageCount: 0,
         activeUsers: 0,
       } as Game;
@@ -506,6 +570,7 @@ export const fetchGameStats = action({
       }
 
       // Fetch SuperCoach scores for AFL
+      let statusFromFootyInfo: string | null = null;
       if (args.leagueId === "afl") {
         try {
           const competition = data.header?.competitions?.[0];
@@ -518,94 +583,103 @@ export const fetchGameStats = action({
           const roundNumber = typeof roundData === "object" ? roundData.number : roundData;
 
           if (homeTeamName && awayTeamName && startTime) {
-            const scScores = (await ctx.runAction(internal.footyinfo.fetchSuperCoachScores, {
+            const footyInfoData = (await ctx.runAction(internal.footyinfo.fetchSuperCoachScores, {
               homeTeam: homeTeamName,
               awayTeam: awayTeamName,
               date: startTime,
               roundNumber,
-            })) as Record<string, { sc: number; guernsey: string }> | null;
+            })) as { scores: Record<string, { sc: number; guernsey: string }>; sts: string | null } | null;
 
-            if (scScores) {
-              console.log(`[Stats Action] Injecting SC scores for ${Object.keys(scScores).length} players`);
-              
-              // Normalize the keys in scScores once
-              const normalizeForMatch = (s: string) => s.replace(/[,.]/g, "").toLowerCase().trim();
-              const normalizedScScores: Record<string, { sc: number; guernsey: string }> = {};
-              Object.entries(scScores).forEach(([k, v]) => {
-                normalizedScScores[normalizeForMatch(k)] = v;
-              });
+            if (footyInfoData) {
+              const scScores = footyInfoData.scores;
+              statusFromFootyInfo = footyInfoData.sts;
 
-              const flatScoresToUpsert: any[] = [];
+              if (statusFromFootyInfo) {
+                console.log(`[Stats Action] Found status display from FootyInfo: ${statusFromFootyInfo}`);
+              }
 
-              // Inject SuperCoach scores and guernsey into players data
-              players = players.map((teamData: any) => {
-                const teamId = String(teamData.team?.id || "");
-                const teamName = teamData.team?.displayName || "";
-                const isHome = teamId === String(homeTeamInfo?.team?.id);
-                const opponentInfo = isHome ? awayTeamInfo : homeTeamInfo;
-
-                return {
-                  ...teamData,
-                  statistics: (teamData.statistics || []).map((category: any) => ({
-                    ...category,
-                    athletes: (category.athletes || []).map((athleteData: any) => {
-                      const ath = { ...athleteData };
-                      if (ath.athlete && ath.athlete.displayName) {
-                        const name = ath.athlete.displayName.toLowerCase();
-                        const parts = name.split(" ");
-                        const firstName = parts[0];
-                        const initial = firstName.charAt(0);
-                        const fullLastName = parts.slice(1).join(" ");
-                        
-                        const nameNorm = normalizeForMatch(name);
-                        const reversedNorm = parts.length > 1 ? normalizeForMatch(`${fullLastName} ${firstName}`) : nameNorm;
-                        const shortNameNorm = parts.length > 1 ? normalizeForMatch(`${initial} ${fullLastName}`) : nameNorm;
-                        
-                        const scData = normalizedScScores[reversedNorm] ||
-                                     normalizedScScores[shortNameNorm] ||
-                                     normalizedScScores[nameNorm] ||
-                                     (parts.length > 2 ? normalizedScScores[normalizeForMatch(`${parts[parts.length - 2]} ${parts[parts.length - 1]}`)] : undefined);
-
-                        if (scData) {
-                          // Collect for bulk upsert
-                          flatScoresToUpsert.push({
-                            playerId: String(ath.athlete.id),
-                            playerName: ath.athlete.displayName,
-                            playerImage: ath.athlete.headshot?.href || ath.athlete.headshot,
-                            externalMatchId: args.externalId,
-                            gameId: args.gameId,
-                            score: scData.sc,
-                            round: roundNumber,
-                            roundName: data.header?.season?.name,
-                            teamId,
-                            teamName,
-                            opponentId: String(opponentInfo?.team?.id || ""),
-                            opponentName: opponentInfo?.team?.displayName || "",
-                          });
-
-                          return {
-                            ...ath,
-                            supercoach: scData.sc,
-                            guernsey: scData.guernsey || ath.guernsey,
-                            mappedStats: {
-                              ...(ath.mappedStats || {}),
-                              sc: scData.sc,
-                              guernsey: scData.guernsey || ath.guernsey
-                            }
-                          };
-                        }
-                      }
-                      return ath;
-                    }),
-                  })),
-                };
-              });
-
-              // Bulk upsert to supercoachScores table
-              if (flatScoresToUpsert.length > 0) {
-                await ctx.runMutation(internal.stats.upsertSupercoachScores, {
-                  scores: flatScoresToUpsert,
+              if (scScores) {
+                console.log(`[Stats Action] Injecting SC scores for ${Object.keys(scScores).length} players`);
+                
+                // Normalize the keys in scScores once
+                const normalizeForMatch = (s: string) => s.replace(/[,.]/g, "").toLowerCase().trim();
+                const normalizedScScores: Record<string, { sc: number; guernsey: string }> = {};
+                Object.entries(scScores).forEach(([k, v]) => {
+                  normalizedScScores[normalizeForMatch(k)] = v;
                 });
+
+                const flatScoresToUpsert: any[] = [];
+
+                // Inject SuperCoach scores and guernsey into players data
+                players = players.map((teamData: any) => {
+                  const teamId = String(teamData.team?.id || "");
+                  const teamName = teamData.team?.displayName || "";
+                  const isHome = teamId === String(homeTeamInfo?.team?.id);
+                  const opponentInfo = isHome ? awayTeamInfo : homeTeamInfo;
+
+                  return {
+                    ...teamData,
+                    statistics: (teamData.statistics || []).map((category: any) => ({
+                      ...category,
+                      athletes: (category.athletes || []).map((athleteData: any) => {
+                        const ath = { ...athleteData };
+                        if (ath.athlete && ath.athlete.displayName) {
+                          const name = ath.athlete.displayName.toLowerCase();
+                          const parts = name.split(" ");
+                          const firstName = parts[0];
+                          const initial = firstName.charAt(0);
+                          const fullLastName = parts.slice(1).join(" ");
+                          
+                          const nameNorm = normalizeForMatch(name);
+                          const reversedNorm = parts.length > 1 ? normalizeForMatch(`${fullLastName} ${firstName}`) : nameNorm;
+                          const shortNameNorm = parts.length > 1 ? normalizeForMatch(`${initial} ${fullLastName}`) : nameNorm;
+                          
+                          const scData = normalizedScScores[reversedNorm] ||
+                                       normalizedScScores[shortNameNorm] ||
+                                       normalizedScScores[nameNorm] ||
+                                       (parts.length > 2 ? normalizedScScores[normalizeForMatch(`${parts[parts.length - 2]} ${parts[parts.length - 1]}`)] : undefined);
+
+                          if (scData) {
+                            // Collect for bulk upsert
+                            flatScoresToUpsert.push({
+                              playerId: String(ath.athlete.id),
+                              playerName: ath.athlete.displayName,
+                              playerImage: ath.athlete.headshot?.href || ath.athlete.headshot,
+                              externalMatchId: args.externalId,
+                              gameId: args.gameId,
+                              score: scData.sc,
+                              round: roundNumber,
+                              roundName: data.header?.season?.name,
+                              teamId,
+                              teamName,
+                              opponentId: String(opponentInfo?.team?.id || ""),
+                              opponentName: opponentInfo?.team?.displayName || "",
+                            });
+
+                            return {
+                              ...ath,
+                              supercoach: scData.sc,
+                              guernsey: scData.guernsey || ath.guernsey,
+                              mappedStats: {
+                                ...(ath.mappedStats || {}),
+                                sc: scData.sc,
+                                guernsey: scData.guernsey || ath.guernsey
+                              }
+                            };
+                          }
+                        }
+                        return ath;
+                      }),
+                    })),
+                  };
+                });
+
+                // Bulk upsert to supercoachScores table
+                if (flatScoresToUpsert.length > 0) {
+                  await ctx.runMutation(internal.stats.upsertSupercoachScores, {
+                    scores: flatScoresToUpsert,
+                  });
+                }
               }
             }
           }
@@ -629,6 +703,7 @@ export const fetchGameStats = action({
         winprobability: data?.winprobability,
         predictor: data?.predictor,
         standings: data?.standings,
+        statusDisplay: statusFromFootyInfo,
       };
 
       // 2. Cache the result
