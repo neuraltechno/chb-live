@@ -136,6 +136,7 @@ async function fetchEspnGames(
       const minute = getMinute(competition, sport);
       const displayClock = competition?.status?.displayClock;
       const period = competition?.status?.period;
+      const statusDescription = competition?.status?.type?.description;
 
       const homeScore = homeCompetitor?.score
         ? parseInt(homeCompetitor.score)
@@ -223,6 +224,7 @@ async function fetchEspnGames(
         roundNumber,
         displayClock,
         period,
+        statusDescription,
         leg: legStr,
         seriesNote,
         messageCount: 0,
@@ -273,6 +275,7 @@ async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefi
 
       const displayClock = competition?.status?.displayClock;
       const period = competition?.status?.period;
+      const statusDescription = competition?.status?.type?.description;
 
       let finalRoundNumber = roundNum;
       const eventRound = event.competitions?.[0]?.round;
@@ -331,6 +334,7 @@ async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefi
         roundNumber: finalRoundNumber,
         displayClock,
         period,
+        statusDescription,
         messageCount: 0,
         activeUsers: 0,
       } as Game;
@@ -627,7 +631,7 @@ export const fetchGameStats = action({
         }
       }
 
-      const result = {
+      const result: any = {
         home: homeStats,
         away: awayStats,
         boxscore: {
@@ -644,7 +648,23 @@ export const fetchGameStats = action({
         standings: data?.standings,
         displayClock: data?.header?.competitions?.[0]?.status?.displayClock,
         period: data?.header?.competitions?.[0]?.status?.period,
+        statusDescription: data?.header?.competitions?.[0]?.status?.type?.description,
       };
+
+      // For AFL, calculate and inject statusDisplay (G.B.S format)
+      if (args.leagueId === "afl") {
+        const homeGoals = homeStats.goals || "0";
+        const homeBehinds = homeStats.behinds || "0";
+        const homeTotal = homeStats.score || "0";
+        const awayGoals = awayStats.goals || "0";
+        const awayBehinds = awayStats.behinds || "0";
+        const awayTotal = awayStats.score || "0";
+
+        // Only add if we have some scoring data
+        if (homeTotal !== "0" || awayTotal !== "0") {
+          result.statusDisplay = `${homeGoals}.${homeBehinds}.${homeTotal} - ${awayGoals}.${awayBehinds}.${awayTotal}`;
+        }
+      }
 
       // 2. Cache the result
       await ctx.runMutation(internal.stats.saveStatsAndDetectChanges, {

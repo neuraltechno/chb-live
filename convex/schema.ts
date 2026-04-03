@@ -50,6 +50,7 @@ export default defineSchema({
     statusDisplay: v.optional(v.string()),
     displayClock: v.optional(v.string()),
     period: v.optional(v.number()),
+    statusDescription: v.optional(v.string()),
     data: v.any(),
     lastFetched: v.number(),
   })

@@ -113,6 +113,7 @@ export interface Game {
   statusDisplay?: string; // e.g. "Q4 6m" for AFL from FootyInfo
   displayClock?: string;
   period?: number;
+  statusDescription?: string; // e.g. "Halftime", "End of 3rd"
   messageCount: number;
   activeUsers: number;
 }

@@ -164,7 +164,11 @@ function MatchCard({ game, onClick }: MatchCardProps) {
           {/* Status Display (Middle Column / Centered between teams area) */}
           {game.statusDisplay && game.statusDisplay !== "undefined" && (
             <div className="flex justify-center -mt-1.5 mb-0.5">
-              <span className="text-[10px] font-bold text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded-full border border-primary-500/20">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                game.sport === "afl" 
+                  ? "text-primary-400 bg-primary-500/10 border-primary-500/20"
+                  : "text-dark-400 bg-dark-500/10 border-dark-500/20"
+              }`}>
                 {game.statusDisplay}
               </span>
             </div>

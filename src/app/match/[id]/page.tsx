@@ -80,16 +80,21 @@ export default function MatchPage() {
 
   const renderStatus = () => {
     if (game.status === "scheduled") return null;
-    if (game.status === "halftime") return "Halftime";
+    if (game.status === "halftime" || game.statusDescription === "Halftime") return "Halftime";
     if (game.status === "finished") return "Final";
     
+    // If we have a specific description like "End of 1st", use it
+    if (game.statusDescription && (game.statusDescription.includes("End of") || game.statusDescription === "Halftime")) {
+      return game.statusDescription;
+    }
+
     if (game.displayClock || game.period) {
       const periodStr = game.period ? `Q${game.period}` : "";
       const clockStr = game.displayClock || "";
       return `${periodStr} ${clockStr}`.trim();
     }
     
-    return null;
+    return game.statusDescription || null;
   };
 
   const statusText = renderStatus();

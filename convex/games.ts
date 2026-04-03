@@ -28,6 +28,7 @@ export const syncGames = internalMutation({
           statusDisplay: gameData.statusDisplay,
           displayClock: gameData.displayClock,
           period: gameData.period,
+          statusDescription: gameData.statusDescription,
         });
       } else {
         await ctx.db.insert("cachedGames", {
@@ -40,6 +41,7 @@ export const syncGames = internalMutation({
           statusDisplay: gameData.statusDisplay,
           displayClock: gameData.displayClock,
           period: gameData.period,
+          statusDescription: gameData.statusDescription,
           data: gameData,
           lastFetched: now,
         });
@@ -181,6 +183,7 @@ export const list = query({
           statusDisplay: g.statusDisplay || d.statusDisplay,
           displayClock: g.displayClock || d.displayClock,
           period: g.period || d.period,
+          statusDescription: g.statusDescription || d.statusDescription,
         };
       })
       .sort((a, b) => {
@@ -227,6 +230,7 @@ export const get = query({
           statusDisplay: game.statusDisplay || d.statusDisplay,
           displayClock: game.displayClock || d.displayClock,
           period: game.period || d.period,
+          statusDescription: game.statusDescription || d.statusDescription,
       homeTeam: {
         id: d.homeTeam.id,
         name: d.homeTeam.name,

@@ -155,7 +155,10 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
               if (!player) return;
               
               const pos = player.position?.abbreviation || player.position?.name;
-              if (pos === "EMERG") return; // Skip emergencies
+
+              // Check if player has valid stats (filter out "--" placeholder for late replacements)
+              const hasInvalidStats = athlete.stats?.some((val: string) => val === "--");
+              if (hasInvalidStats) return;
 
               const existing = playersMap.get(player.id) || {
                 id: player.id,
@@ -326,22 +329,22 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
                   <tbody className="divide-y divide-dark-700/20">
                     {sortedPlayers.map((player) => (
                       <tr key={player.id} className="hover:bg-dark-800/30 transition-colors">
-                        <td className="px-2 py-0.5 flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded bg-dark-800 border border-dark-700/50 flex-shrink-0 flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-primary-400">
-                              {player.jersey || "-"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 min-w-0">
-                            <span className="text-white font-medium truncate text-[12px]">{player.name}</span>
+                        <td className="px-2 py-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded bg-dark-800 border border-dark-700/50 flex-shrink-0 flex items-center justify-center">
+                              <span className="text-[10px] font-bold text-primary-400">
+                                {player.jersey || "-"}
+                              </span>
+                            </div>
+                            <span className="text-white font-medium truncate text-[14px] leading-none">{player.name}</span>
                           </div>
                         </td>
                         {displayStats.map(s => (
-                          <td key={s.key} className="relative px-0.5 py-0.5 pt-4 text-center text-dark-200 tabular-nums text-[12px]">
+                          <td key={s.key} className="relative px-0.5 py-1.5 text-center text-dark-200 tabular-nums text-[14px] leading-none">
                             <div className="flex items-center justify-center">
                               {getStatValue(player, s.key)}
                             </div>
-                            <div className={`absolute top-0 left-0 right-0 flex justify-center pointer-events-none transition-opacity duration-200 ${s.key === "sc" && isAfl && scIncreases[`${teamIdx}-${player.id}`] ? "opacity-100" : "opacity-0"}`}>
+                            <div className={`absolute -top-1 left-0 right-0 flex justify-center pointer-events-none transition-opacity duration-200 ${s.key === "sc" && isAfl && scIncreases[`${teamIdx}-${player.id}`] ? "opacity-100" : "opacity-0"}`}>
                               <SCIncreaseBadge increase={scIncreases[`${teamIdx}-${player.id}`]?.increase ?? 0} />
                             </div>
                           </td>

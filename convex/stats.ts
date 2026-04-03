@@ -95,7 +95,7 @@ export const saveStatsAndDetectChanges = internalMutation({
     }
 
     // Update game root statusDisplay if present in stats
-    if (gameId && (stats.statusDisplay || stats.displayClock || stats.period !== undefined)) {
+    if (gameId && (stats.statusDisplay || stats.displayClock || stats.period !== undefined || stats.statusDescription)) {
       const gameRecord = await ctx.db
         .query("cachedGames")
         .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
@@ -105,11 +105,13 @@ export const saveStatsAndDetectChanges = internalMutation({
           statusDisplay: stats.statusDisplay,
           displayClock: stats.displayClock,
           period: stats.period,
+          statusDescription: stats.statusDescription,
           data: { 
             ...gameRecord.data, 
             statusDisplay: stats.statusDisplay,
             displayClock: stats.displayClock,
             period: stats.period,
+            statusDescription: stats.statusDescription,
           },
         });
       }
