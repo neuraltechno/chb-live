@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useDMStore } from "@/lib/store";
 import DMPanel from "./DMPanel";
+import GameBanner from "./GameBanner";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
@@ -33,34 +34,25 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/95 backdrop-blur-md border-b border-dark-700/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
             <div className="relative">
               <Gamepad2 className="w-8 h-8 text-primary-500 group-hover:text-primary-400 transition-colors" />
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent-green rounded-full animate-pulse-live" />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent hidden lg:block">
               Gamebloc
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            <Link
-              href="/"
-              className="text-dark-300 hover:text-white transition-colors text-sm font-medium"
-            >
-              Matches
-            </Link>
-            <div className="flex items-center gap-2 text-dark-500 text-xs">
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>Live Sports Chat</span>
-            </div>
+          {/* Game Banner - Desktop */}
+          <div className="hidden sm:flex flex-1 items-center justify-center px-6 overflow-hidden">
+            <GameBanner />
           </div>
 
           {/* Auth Section */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {!isLoaded ? (
               <div className="w-8 h-8 rounded-full bg-dark-700 animate-pulse" />
             ) : isSignedIn ? (
