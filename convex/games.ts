@@ -8,30 +8,42 @@ export const syncGames = internalMutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+    const incomingExternalIds = new Set(args.games.map((g) => g.externalId));
+
+    // Single query to fetch ALL existing games, then filter in memory
+    const allExisting = await ctx.db.query("cachedGames").collect();
+    const existingMap = new Map();
+    for (const existing of allExisting) {
+      existingMap.set(existing.externalId, existing);
+    }
+
+    const toInsert: any[] = [];
+    const toUpdate: { id: any; fields: any }[] = [];
+
     for (const gameData of args.games) {
-      const existing = await ctx.db
-        .query("cachedGames")
-        .withIndex("by_externalId", (q) => q.eq("externalId", gameData.externalId))
-        .unique();
+      const existing = existingMap.get(gameData.externalId);
 
       if (existing) {
-        // If we are patching, merge the data to preserve existing fields like messageCount/activeUsers if they were in data
+        // Merge data to preserve fields like messageCount/activeUsers
         const mergedData = { ...existing.data, ...gameData };
-        await ctx.db.patch(existing._id, {
-          data: mergedData,
-          lastFetched: now,
-          sport: gameData.sport,
-          leagueId: gameData.league.id,
-          startTime: new Date(gameData.startTime).getTime(),
-          roundNumber: gameData.roundNumber,
-          roundName: gameData.round,
-          statusDisplay: gameData.statusDisplay,
-          displayClock: gameData.displayClock,
-          period: gameData.period,
-          statusDescription: gameData.statusDescription,
+        toUpdate.push({
+          id: existing._id,
+          fields: {
+            data: mergedData,
+            lastFetched: now,
+            sport: gameData.sport,
+            leagueId: gameData.league.id,
+            startTime: new Date(gameData.startTime).getTime(),
+            roundNumber: gameData.roundNumber,
+            roundName: gameData.round,
+            statusDisplay: gameData.statusDisplay,
+            displayClock: gameData.displayClock,
+            period: gameData.period,
+            statusDescription: gameData.statusDescription,
+          },
         });
       } else {
-        await ctx.db.insert("cachedGames", {
+        toInsert.push({
           externalId: gameData.externalId,
           sport: gameData.sport,
           leagueId: gameData.league.id,
@@ -48,13 +60,21 @@ export const syncGames = internalMutation({
       }
     }
 
-    // Cleanup: Remove any games that are not AFL (since we only want AFL for now)
-    const nonAflGames = await ctx.db
-      .query("cachedGames")
-      .filter((q) => q.neq(q.field("sport"), "afl"))
-      .collect();
+    // Batch all inserts and updates
+    for (const fields of toInsert) {
+      await ctx.db.insert("cachedGames", fields);
+    }
+    for (const { id, fields } of toUpdate) {
+      await ctx.db.patch(id, fields);
+    }
 
-    for (const game of nonAflGames) {
+    // Cleanup: Remove games that are not in the incoming batch AND are not AFL
+    // This is more efficient - only delete games we know are stale
+    const gamesToDelete = allExisting.filter(
+      (g) => g.sport !== "afl" && !incomingExternalIds.has(g.externalId)
+    );
+
+    for (const game of gamesToDelete) {
       await ctx.db.delete(game._id);
     }
   },
@@ -64,16 +84,13 @@ export const syncGames = internalMutation({
 export const migrateAflRounds = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const aflGames = await ctx.db
-      .query("cachedGames")
-      .filter((q) => q.eq(q.field("sport"), "afl"))
-      .collect();
+    const allGames = await ctx.db.query("cachedGames").collect();
+    const aflGames = allGames.filter((g) => g.sport === "afl");
 
     let count = 0;
     for (const game of aflGames) {
       const data = game.data || {};
       
-      // Force update for testing if count is low or specific fields are missing
       let roundNum = game.roundNumber;
       let roundName = game.roundName || data.round;
 
@@ -86,7 +103,6 @@ export const migrateAflRounds = internalMutation({
         }
       }
 
-      // If we found a roundNum, we apply it to root and nested data
       if (roundNum !== undefined) {
         await ctx.db.patch(game._id, {
           roundNumber: roundNum,
@@ -113,10 +129,6 @@ export const list = query({
         .query("cachedGames")
         .withIndex("by_round", (q) => q.eq("roundNumber", args.round))
         .collect();
-
-      // If we are looking for a specific round and don't have enough games, trigger a sync
-      // but Convex queries are pure, so we can't trigger an action here.
-      // Instead, we just return what we have.
     } else {
       // Default to 14-day window to avoid fetching the entire database
       const now = Date.now();
@@ -139,7 +151,7 @@ export const list = query({
       games = games.filter((g) => g.sport === args.sport);
     }
 
-    // Deduplicate games by externalId to ensure no overlaps between today's fetch and round fetch
+    // Deduplicate games by externalId
     const seen = new Set<string>();
     const uniqueGames = games.filter((g) => {
       if (seen.has(g.externalId)) return false;
@@ -207,14 +219,14 @@ export const list = query({
 export const get = query({
   args: { id: v.string() },
   handler: async (ctx, args) => {
+    const externalId = args.id.split("_").pop()!;
     const game = await ctx.db
       .query("cachedGames")
-      .withIndex("by_externalId", (q) => q.eq("externalId", args.id.split("_").pop()!))
+      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
       .unique();
     if (!game) return null;
     
     const d = game.data;
-    // Projection for detail view (can include more fields than list if needed)
     return {
       id: d.id,
       externalId: d.externalId,
@@ -222,15 +234,15 @@ export const get = query({
       startTime: d.startTime,
       league: d.league,
       round: d.round,
-          roundNumber: d.roundNumber,
-          leg: d.leg,
-          seriesNote: d.seriesNote,
-          minute: d.minute,
-          venue: d.venue,
-          statusDisplay: game.statusDisplay || d.statusDisplay,
-          displayClock: game.displayClock || d.displayClock,
-          period: game.period || d.period,
-          statusDescription: game.statusDescription || d.statusDescription,
+      roundNumber: d.roundNumber,
+      leg: d.leg,
+      seriesNote: d.seriesNote,
+      minute: d.minute,
+      venue: d.venue,
+      statusDisplay: game.statusDisplay || d.statusDisplay,
+      displayClock: game.displayClock || d.displayClock,
+      period: game.period || d.period,
+      statusDescription: game.statusDescription || d.statusDescription,
       homeTeam: {
         id: d.homeTeam.id,
         name: d.homeTeam.name,
