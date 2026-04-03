@@ -109,6 +109,7 @@ export default function MatchPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {/* 
           <div className={`relative overflow-hidden ${isLive ? "bg-gradient-to-b from-red-950/20 to-transparent" : ""}`}>
             {isLive && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-red-400 to-red-500" />}
 
@@ -192,6 +193,7 @@ export default function MatchPage() {
               </div>
             </div>
           </div>
+          */}
 
           {game.sport === "afl" && (
             <MatchSupercoachLeaderboard
