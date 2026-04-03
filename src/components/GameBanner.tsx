@@ -2,11 +2,15 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Game } from "@/types";
-import { format, isToday, isTomorrow, parseISO } from "date-fns";
+import { Game, SportType } from "@/types";
+import { format, parseISO } from "date-fns";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
 import { memo } from "react";
+
+interface GameBannerProps {
+  round: number | null;
+  sport: SportType | "all";
+}
 
 const GameBannerItem = memo(({ game }: { game: Game }) => {
   const isLive = game.status === "live" || game.status === "halftime";
@@ -19,7 +23,7 @@ const GameBannerItem = memo(({ game }: { game: Game }) => {
   return (
     <Link
       href={`/match/${game.id}`}
-      className="flex flex-col p-1.5 rounded-md bg-dark-800/40 hover:bg-dark-700/60 border border-dark-700/30 transition-all group overflow-hidden min-w-[90px]"
+      className="flex flex-col p-1.5 rounded-md bg-dark-800/40 hover:bg-dark-700/60 border border-dark-700/30 transition-all group overflow-hidden min-w-[80px] flex-1"
     >
       <div className="flex items-center justify-between mb-0.5">
         <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -81,17 +85,17 @@ const GameBannerItem = memo(({ game }: { game: Game }) => {
 
 GameBannerItem.displayName = "GameBannerItem";
 
-export default function GameBanner() {
-  const games = useQuery(api.games.list) || [];
+export default function GameBanner({ round, sport }: GameBannerProps) {
+  const games = useQuery(api.games.list, {
+    round: round ?? undefined,
+    sport: sport === "all" ? undefined : sport,
+  }) || [];
 
-  // Limit to top 9 games prioritizing live, then upcoming, then recently finished
-  const bannerGames = [...games].slice(0, 9);
-
-  if (bannerGames.length === 0) return null;
+  if (games.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1.5 overflow-hidden">
-      {bannerGames.map((game) => (
+    <div className="flex items-center gap-1.5 overflow-hidden flex-1 justify-center">
+      {games.map((game) => (
         <GameBannerItem key={game.id} game={game} />
       ))}
     </div>

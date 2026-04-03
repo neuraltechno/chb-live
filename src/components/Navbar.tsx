@@ -13,6 +13,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useDMStore } from "@/lib/store";
+import { useGameStore } from "@/lib/store";
 import DMPanel from "./DMPanel";
 import GameBanner from "./GameBanner";
 import { useQuery } from "convex/react";
@@ -25,8 +26,12 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { isDMOpen, openDM, closeDM } = useDMStore();
+  const selectedRound = useGameStore((s) => s.selectedRound);
+  const selectedSport = useGameStore((s) => s.selectedSport);
 
   // Fetch unread DM count from Convex
+
+
   const conversations = useQuery(api.conversations.list) || [];
   const totalUnread = 0; // Temporary fix to bypass unreadCount error until conversations schema is verified
 
@@ -48,7 +53,7 @@ export default function Navbar() {
 
           {/* Game Banner - Desktop */}
           <div className="hidden sm:flex flex-1 items-center justify-center px-6 overflow-hidden">
-            <GameBanner />
+            <GameBanner round={selectedRound} sport={selectedSport} />
           </div>
 
           {/* Auth Section */}
