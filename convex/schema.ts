@@ -48,6 +48,8 @@ export default defineSchema({
     roundNumber: v.optional(v.number()),
     roundName: v.optional(v.string()),
     statusDisplay: v.optional(v.string()),
+    displayClock: v.optional(v.string()),
+    period: v.optional(v.number()),
     data: v.any(),
     lastFetched: v.number(),
   })

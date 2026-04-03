@@ -134,6 +134,8 @@ async function fetchEspnGames(
         status = "cancelled";
 
       const minute = getMinute(competition, sport);
+      const displayClock = competition?.status?.displayClock;
+      const period = competition?.status?.period;
 
       const homeScore = homeCompetitor?.score
         ? parseInt(homeCompetitor.score)
@@ -219,6 +221,8 @@ async function fetchEspnGames(
         venue: competition?.venue?.fullName || competition?.venue?.displayName,
         round: roundNameDisplay,
         roundNumber,
+        displayClock,
+        period,
         leg: legStr,
         seriesNote,
         messageCount: 0,
@@ -257,38 +261,6 @@ async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefi
     const resData = await res.json();
     const events = resData?.events || [];
 
-    // Fetch FootyInfo summary once for the whole round to get status display (sts)
-    let footyInfoMatches: any[] = [];
-    try {
-      const summaryRes = await fetch("https://api.footyinfo.com/api/round_summary");
-      const summaryData = await summaryRes.json();
-      footyInfoMatches = summaryData.matches || [];
-    } catch (fiError) {
-      console.error(`[AFL Fetch] Failed to fetch FootyInfo summary:`, fiError);
-    }
-
-    // Normalize names for better matching
-    const normalize = (name: string) => 
-      name.toLowerCase()
-        .replace(/sydney swans/g, "sydney")
-        .replace(/geelong cats/g, "geelong")
-        .replace(/adelaide crows/g, "adelaide")
-        .replace(/brisbane lions/g, "brisbane")
-        .replace(/gold coast suns/g, "gold coast")
-        .replace(/gws giants/g, "gws")
-        .replace(/fremantle dockers/g, "fremantle")
-        .replace(/west coast eagles/g, "west coast")
-        .replace(/richmond tigers/g, "richmond")
-        .replace(/collingwood magpies/g, "collingwood")
-        .replace(/essendon bombers/g, "essendon")
-        .replace(/st kilda saints/g, "st kilda")
-        .replace(/melbourne demons/g, "melbourne")
-        .replace(/north melbourne kangaroos/g, "north melbourne")
-        .replace(/port adelaide power/g, "port adelaide")
-        .replace(/hawthorn hawks/g, "hawthorn")
-        .replace(/carlton blues/g, "carlton")
-        .trim();
-
     return events.map((event: any) => {
       const competition = event.competitions?.[0];
       const homeCompetitor = competition?.competitors?.find((c: any) => c.homeAway === "home");
@@ -298,6 +270,9 @@ async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefi
       const showScore = status === "live" || status === "halftime" || status === "finished";
       const homeScore = homeCompetitor?.score ? parseInt(homeCompetitor.score) : undefined;
       const awayScore = awayCompetitor?.score ? parseInt(awayCompetitor.score) : undefined;
+
+      const displayClock = competition?.status?.displayClock;
+      const period = competition?.status?.period;
 
       let finalRoundNumber = roundNum;
       const eventRound = event.competitions?.[0]?.round;
@@ -330,37 +305,6 @@ async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefi
           roundDisplay = roundNum === 0 ? "Opening Round" : `Round ${roundNum}`;
       }
 
-      // Try to find matching FootyInfo match for sts
-      let statusDisplay: string | undefined;
-      // ALWAYS try to find status if it's an AFL game, even if not live (could be finished/scheduled)
-      if (aflLeague.id === "afl") {
-        const targetHome = normalize(homeCompetitor?.team?.displayName || "");
-        const targetAway = normalize(awayCompetitor?.team?.displayName || "");
-        console.log(`[AFL Fetch Debug] Looking for match: ${targetHome} vs ${targetAway}. Matches in FI: ${footyInfoMatches.length}`);
-        const fiMatch = footyInfoMatches.find((m: any) => {
-          const mHome = normalize(m.home_team_full || m.home_team || "");
-          const mAway = normalize(m.away_team_full || m.away_team || "");
-          
-          // Match by teams (allowing for swapped home/away)
-          const isMatch = (mHome === targetHome && mAway === targetAway) || 
-                          (mHome === targetAway && mAway === targetHome);
-          
-          if (isMatch) {
-            console.log(`[AFL Fetch Debug] MATCHED: ${mHome} vs ${mAway} with ${targetHome} vs ${targetAway}`);
-          }
-          return isMatch;
-        });
-        if (fiMatch) {
-          statusDisplay = (fiMatch.sts && fiMatch.sts !== "undefined") ? fiMatch.sts : undefined;
-          console.log(`[AFL Fetch Debug] Found match for ${event.id}: ${targetHome} vs ${targetAway}. sts: ${fiMatch.sts}, statusDisplay: ${statusDisplay}`);
-        } else {
-          console.log(`[AFL Fetch Debug] No FootyInfo match for ${event.id} (${targetHome} vs ${targetAway}).`);
-          if (footyInfoMatches.length > 0) {
-            console.log(`[AFL Fetch Debug] First few FI matches: ${footyInfoMatches.slice(0, 3).map(m => `${m.home_team} vs ${m.away_team}`).join(', ')}`);
-          }
-        }
-      }
-
       return {
         id: `afl_${event.id}`,
         externalId: String(event.id),
@@ -385,7 +329,8 @@ async function fetchAflGamesByRound(aflLeague: League, roundNum: number | undefi
         venue: competition?.venue?.fullName || competition?.venue?.displayName,
         round: roundDisplay,
         roundNumber: finalRoundNumber,
-        statusDisplay,
+        displayClock,
+        period,
         messageCount: 0,
         activeUsers: 0,
       } as Game;
@@ -570,7 +515,6 @@ export const fetchGameStats = action({
       }
 
       // Fetch SuperCoach scores for AFL
-      let statusFromFootyInfo: string | null = null;
       if (args.leagueId === "afl") {
         try {
           const competition = data.header?.competitions?.[0];
@@ -588,15 +532,10 @@ export const fetchGameStats = action({
               awayTeam: awayTeamName,
               date: startTime,
               roundNumber,
-            })) as { scores: Record<string, { sc: number; guernsey: string }>; sts: string | null } | null;
+            })) as { scores: Record<string, { sc: number; guernsey: string }> } | null;
 
             if (footyInfoData) {
               const scScores = footyInfoData.scores;
-              statusFromFootyInfo = footyInfoData.sts;
-
-              if (statusFromFootyInfo) {
-                console.log(`[Stats Action] Found status display from FootyInfo: ${statusFromFootyInfo}`);
-              }
 
               if (scScores) {
                 console.log(`[Stats Action] Injecting SC scores for ${Object.keys(scScores).length} players`);
@@ -703,7 +642,8 @@ export const fetchGameStats = action({
         winprobability: data?.winprobability,
         predictor: data?.predictor,
         standings: data?.standings,
-        statusDisplay: statusFromFootyInfo,
+        displayClock: data?.header?.competitions?.[0]?.status?.displayClock,
+        period: data?.header?.competitions?.[0]?.status?.period,
       };
 
       // 2. Cache the result

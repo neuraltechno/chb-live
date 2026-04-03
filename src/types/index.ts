@@ -111,6 +111,8 @@ export interface Game {
   leg?: string; // e.g. "1st Leg", "2nd Leg"
   seriesNote?: string; // e.g. "1st Leg" or aggregate score
   statusDisplay?: string; // e.g. "Q4 6m" for AFL from FootyInfo
+  displayClock?: string;
+  period?: number;
   messageCount: number;
   activeUsers: number;
 }

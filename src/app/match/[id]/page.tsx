@@ -78,6 +78,22 @@ export default function MatchPage() {
   const isLive = game.status === "live" || game.status === "halftime";
   const startDate = parseISO(game.startTime);
 
+  const renderStatus = () => {
+    if (game.status === "scheduled") return null;
+    if (game.status === "halftime") return "Halftime";
+    if (game.status === "finished") return "Final";
+    
+    if (game.displayClock || game.period) {
+      const periodStr = game.period ? `Q${game.period}` : "";
+      const clockStr = game.displayClock || "";
+      return `${periodStr} ${clockStr}`.trim();
+    }
+    
+    return null;
+  };
+
+  const statusText = renderStatus();
+
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col lg:flex-row bg-dark-950 overflow-hidden">
       {/* Column 1: Team Info & Team Stats (15%) */}
@@ -109,11 +125,11 @@ export default function MatchPage() {
                   {game.seriesNote && <span className="text-[11px] text-dark-400">{game.seriesNote}</span>}
                 </div>
               )}
-
-              {game.statusDisplay && game.statusDisplay !== "undefined" && (
+              
+              {statusText && (
                 <div className="flex justify-center mb-6">
                   <span className="text-[11px] font-bold text-primary-400 bg-primary-500/10 px-3 py-1 rounded-full border border-primary-500/20 shadow-sm shadow-primary-500/5">
-                    {game.statusDisplay}
+                    {statusText}
                   </span>
                 </div>
               )}
@@ -142,12 +158,12 @@ export default function MatchPage() {
                       <p className="text-lg font-semibold text-dark-300">{format(startDate, "HH:mm")}</p>
                     </div>
                   )}
-                  {game.statusDisplay && game.statusDisplay !== "undefined" && (
+                  {statusText && (
                     <span className="mt-1 text-xs text-primary-400 font-bold bg-primary-500/10 px-2 py-0.5 rounded-full border border-primary-500/20">
-                      {game.statusDisplay}
+                      {statusText}
                     </span>
                   )}
-                  {isLive && game.minute && (!game.statusDisplay || game.statusDisplay === "undefined") && <span className="mt-1 text-xs text-red-400 font-medium">{game.minute}'</span>}
+                  {isLive && game.minute && !statusText && <span className="mt-1 text-xs text-red-400 font-medium">{game.minute}'</span>}
                 </div>
 
                 <div className="flex-1 flex flex-col items-center text-center">
@@ -213,10 +229,10 @@ export default function MatchPage() {
                   <span className="font-medium text-primary-400">{game.round}</span>
                 </div>
               )}
-              {game.statusDisplay && game.statusDisplay !== "undefined" && (
+              {statusText && (
                 <div className="flex items-center gap-1.5 border-l border-dark-700/50 pl-6">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                  <span className="font-bold text-primary-400">{game.statusDisplay}</span>
+                  <span className="font-bold text-primary-400">{statusText}</span>
                 </div>
               )}
             </div>
