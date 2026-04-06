@@ -17,13 +17,22 @@ import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useEffect, useState } from "react";
 
-function TeamScoreAfl({ team, gameExternalId, leagueId, gameId }: { team: any, gameExternalId: string, leagueId: string, gameId: string }) {
+function TeamScoreAfl({ team, gameExternalId, leagueId, gameId, onStatusUpdate }: { team: any, gameExternalId: string, leagueId: string, gameId: string, onStatusUpdate: (status: string) => void }) {
   const fetchStats = useAction(api.sportsApi.fetchGameStats);
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    fetchStats({ externalId: gameExternalId, leagueId, gameId }).then(setStats);
-  }, [gameExternalId, leagueId, gameId, fetchStats]);
+    fetchStats({ externalId: gameExternalId, leagueId, gameId }).then((res) => {
+      setStats(res);
+      // If we are on the match page, we can use the 'sts' from FootyInfo for AFL
+      if (res?.sts && leagueId === "afl") {
+        const sts = res.sts.toLowerCase();
+        if (sts.includes("end of") || sts === "halftime") {
+           onStatusUpdate(res.sts);
+        }
+      }
+    });
+  }, [gameExternalId, leagueId, gameId, fetchStats, onStatusUpdate]);
 
   if (!stats || !stats.home || !stats.away) return <span>{team.score}</span>;
 
@@ -39,6 +48,7 @@ export default function MatchPage() {
   const params = useParams();
   const router = useRouter();
   const gameId = params.id as string;
+  const [detailStatus, setDetailStatus] = useState<string | null>(null);
 
   const game = useQuery(api.games.get, { id: gameId });
   const isLoading = game === undefined;
@@ -83,11 +93,6 @@ export default function MatchPage() {
     if (game.status === "halftime" || game.statusDescription === "Halftime") return "Halftime";
     if (game.status === "finished") return "Final";
     
-    // If we have a specific description like "End of 1st", use it
-    if (game.statusDescription && (game.statusDescription.includes("End of") || game.statusDescription === "Halftime")) {
-      return game.statusDescription;
-    }
-
     if (game.displayClock || game.period) {
       const periodStr = game.period ? `Q${game.period}` : "";
       const clockStr = game.displayClock || "";
@@ -97,7 +102,7 @@ export default function MatchPage() {
     return game.statusDescription || null;
   };
 
-  const statusText = renderStatus();
+  const statusText = detailStatus || renderStatus();
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col lg:flex-row bg-dark-950 overflow-hidden">
@@ -114,92 +119,17 @@ export default function MatchPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {/* 
-          <div className={`relative overflow-hidden ${isLive ? "bg-gradient-to-b from-red-950/20 to-transparent" : ""}`}>
-            {isLive && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-red-400 to-red-500" />}
-
-            <div className="px-6 py-6 border-b border-dark-700/50">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-medium text-dark-400 uppercase tracking-wider">{game.league.name}</span>
-                <LiveBadge status={game.status} minute={game.minute} />
-              </div>
-
-              {(game.round && game.round !== "undefined" && game.round !== "Round undefined") && (
-                <div className="flex flex-wrap items-center gap-2 mb-5">
-                  <span className="text-[11px] font-medium text-primary-400 bg-primary-500/10 px-2 py-1 rounded-md">{game.round}</span>
-                  {game.leg && <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md">{game.leg}</span>}
-                  {game.seriesNote && <span className="text-[11px] text-dark-400">{game.seriesNote}</span>}
-                </div>
-              )}
-              
-              {statusText && (
-                <div className="flex justify-center mb-6">
-                  <span className="text-[11px] font-bold text-primary-400 bg-primary-500/10 px-3 py-1 rounded-full border border-primary-500/20 shadow-sm shadow-primary-500/5">
-                    {statusText}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 flex flex-col items-center text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-dark-800 border border-dark-700/50 flex items-center justify-center overflow-hidden mb-3">
-                    {game.homeTeam.logo ? (
-                      <img src={game.homeTeam.logo} alt={game.homeTeam.name} className="w-10 h-10 object-contain" />
-                    ) : (
-                      <span className="text-lg font-bold text-dark-400">{game.homeTeam.shortName.slice(0, 3)}</span>
-                    )}
-                  </div>
-                  <h3 className="text-[13px] font-semibold text-white leading-tight">{game.homeTeam.name}</h3>
-                </div>
-
-                <div className="flex flex-col items-center">
-                  {game.homeTeam.score !== undefined && game.awayTeam.score !== undefined ? (
-                    <div className="flex items-center gap-2">
-                      <span className={`text-3xl font-bold tabular-nums ${isLive ? "text-white" : "text-dark-300"}`}>{game.homeTeam.score}</span>
-                      <span className="text-lg text-dark-600">:</span>
-                      <span className={`text-3xl font-bold tabular-nums ${isLive ? "text-white" : "text-dark-300"}`}>{game.awayTeam.score}</span>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-dark-300">{format(startDate, "HH:mm")}</p>
-                    </div>
-                  )}
-                  {statusText && (
-                    <span className="mt-1 text-xs text-primary-400 font-bold bg-primary-500/10 px-2 py-0.5 rounded-full border border-primary-500/20">
-                      {statusText}
-                    </span>
-                  )}
-                  {isLive && game.minute && !statusText && <span className="mt-1 text-xs text-red-400 font-medium">{game.minute}'</span>}
-                </div>
-
-                <div className="flex-1 flex flex-col items-center text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-dark-800 border border-dark-700/50 flex items-center justify-center overflow-hidden mb-3">
-                    {game.awayTeam.logo ? (
-                      <img src={game.awayTeam.logo} alt={game.awayTeam.name} className="w-10 h-10 object-contain" />
-                    ) : (
-                      <span className="text-lg font-bold text-dark-400">{game.awayTeam.shortName.slice(0, 3)}</span>
-                    )}
-                  </div>
-                  <h3 className="text-[13px] font-semibold text-white leading-tight">{game.awayTeam.name}</h3>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-dark-700/50 space-y-2">
-                {game.venue && (
-                  <div className="flex items-center gap-2 text-xs text-dark-400">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>{game.venue}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-xs text-dark-400">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>{format(startDate, "MMM d, yyyy · HH:mm")}</span>
-                </div>
-              </div>
+          {game.sport === "afl" && (
+            <div className="hidden">
+              <TeamScoreAfl 
+                team={game.homeTeam} 
+                gameExternalId={game.externalId} 
+                leagueId={game.league.id} 
+                gameId={game.id} 
+                onStatusUpdate={setDetailStatus}
+              />
             </div>
-          </div>
-          */}
-
+          )}
           {game.sport === "afl" && (
             <MatchSupercoachLeaderboard
               externalMatchId={game.externalId}

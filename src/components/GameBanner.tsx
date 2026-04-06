@@ -20,6 +20,17 @@ const GameBannerItem = memo(({ game }: { game: Game }) => {
   const timeString = format(startDate, "HH:mm");
   const dateString = format(startDate, "EEE");
 
+  const renderLiveStatus = () => {
+    const status = game.statusDisplay || (game.minute ? `${game.minute}'` : "");
+    if (!status) return "Live";
+    
+    // For AFL: remove score patterns like "6.11.47 - 12.11.83" but keep "Q4 25:20"
+    // This regex looks for digits separated by dots and dashes which is typical for AFL scores in statusDisplay
+    const sanitizedStatus = status.replace(/\d+\.\d+\.\d+\s*-\s*\d+\.\d+\.\d+/, "").trim();
+    
+    return sanitizedStatus || "Live";
+  };
+
   return (
     <Link
       href={`/match/${game.id}`}
@@ -32,12 +43,12 @@ const GameBannerItem = memo(({ game }: { game: Game }) => {
           ) : (
             <div className="w-3 h-3 rounded-full bg-dark-600" />
           )}
-          <span className="text-[10px] font-medium truncate text-dark-100 group-hover:text-white transition-colors">
+          <span className="text-[12px] font-medium truncate text-dark-100 group-hover:text-white transition-colors">
             {game.homeTeam.shortName}
           </span>
         </div>
-        {(isLive || isFinished) && (
-          <span className="text-[10px] font-bold tabular-nums text-white ml-1">
+        {isFinished && (
+          <span className="text-[12px] font-bold tabular-nums text-white ml-1">
             {game.homeTeam.score}
           </span>
         )}
@@ -50,12 +61,12 @@ const GameBannerItem = memo(({ game }: { game: Game }) => {
           ) : (
             <div className="w-3 h-3 rounded-full bg-dark-600" />
           )}
-          <span className="text-[10px] font-medium truncate text-dark-100 group-hover:text-white transition-colors">
+          <span className="text-[12px] font-medium truncate text-dark-100 group-hover:text-white transition-colors">
             {game.awayTeam.shortName}
           </span>
         </div>
-        {(isLive || isFinished) && (
-          <span className="text-[10px] font-bold tabular-nums text-white ml-1">
+        {isFinished && (
+          <span className="text-[12px] font-bold tabular-nums text-white ml-1">
             {game.awayTeam.score}
           </span>
         )}
@@ -66,14 +77,14 @@ const GameBannerItem = memo(({ game }: { game: Game }) => {
           {isLive ? (
             <div className="flex items-center gap-0.5">
               <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[8px] font-bold text-red-500 uppercase tracking-tighter">
-                Live {game.statusDisplay || (game.minute ? `${game.minute}'` : "")}
+              <span className="text-[10px] font-bold text-red-500 uppercase tracking-tighter">
+                {renderLiveStatus()}
               </span>
             </div>
           ) : isFinished ? (
-            <span className="text-[8px] font-bold text-dark-400 uppercase">FT</span>
+            <span className="text-[10px] font-bold text-dark-400 uppercase">FT</span>
           ) : (
-            <span className="text-[8px] font-medium text-dark-400 uppercase tracking-tight">
+            <span className="text-[10px] font-medium text-dark-400 uppercase tracking-tight">
               {dateString} {timeString}
             </span>
           )}
@@ -86,10 +97,17 @@ const GameBannerItem = memo(({ game }: { game: Game }) => {
 GameBannerItem.displayName = "GameBannerItem";
 
 export default function GameBanner({ round, sport }: GameBannerProps) {
-  const games = useQuery(api.games.list, {
-    round: round ?? undefined,
+  const currentRoundFromBackend = useQuery(api.games.getCurrentRound, {
     sport: sport === "all" ? undefined : sport,
-  }) || [];
+  });
+
+  const activeRound = round ?? currentRoundFromBackend;
+
+  const games =
+    useQuery(api.games.list, {
+      round: activeRound ?? undefined,
+      sport: sport === "all" ? undefined : sport,
+    }) || [];
 
   if (games.length === 0) return null;
 

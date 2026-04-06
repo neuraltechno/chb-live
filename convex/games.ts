@@ -116,6 +116,44 @@ export const migrateAflRounds = internalMutation({
   },
 });
 
+export const getCurrentRound = query({
+  args: { sport: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const sport = args.sport || "afl";
+    // Get all games for this sport in the 14-day window to determine current round
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const sevenDaysFromNow = now + 7 * 24 * 60 * 60 * 1000;
+
+    const games = await ctx.db
+      .query("cachedGames")
+      .withIndex("by_startTime", (q) =>
+        q.gt("startTime", sevenDaysAgo).lt("startTime", sevenDaysFromNow)
+      )
+      .collect();
+
+    const sportGames = games
+      .filter((g) => g.sport === sport)
+      .sort((a, b) => a.startTime - b.startTime);
+
+    if (sportGames.length === 0) return null;
+
+    // Find the round of the first game that is not finished
+    const firstActiveGame = sportGames.find((g) => g.data.status !== "finished");
+    if (firstActiveGame && firstActiveGame.roundNumber !== undefined) {
+      return firstActiveGame.roundNumber;
+    }
+
+    // If all games are finished, return the round of the last game
+    const lastGame = sportGames[sportGames.length - 1];
+    if (lastGame && lastGame.roundNumber !== undefined) {
+      return lastGame.roundNumber;
+    }
+
+    return null;
+  },
+});
+
 export const list = query({
   args: {
     leagues: v.optional(v.array(v.string())),
