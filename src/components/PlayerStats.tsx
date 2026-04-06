@@ -30,7 +30,9 @@ interface PlayerStatsProps {
 }
 
 export default function PlayerStats({ game }: PlayerStatsProps) {
-  const stats = useQuery(api.stats.getPlayerStats, { externalId: game.externalId });
+  const statsRecord = useQuery(api.stats.getPlayerStats, { externalId: game.externalId });
+  const stats = statsRecord?.stats; // This is the players array
+
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: game.sport === "afl" ? "sc" : (game.sport === "soccer" ? "goals" : "points"),
     direction: "desc"
@@ -114,7 +116,7 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
     return () => clearInterval(interval);
   }, []);
 
-  if (stats === undefined) {
+  if (statsRecord === undefined) {
     return (
       <div className="flex items-center justify-center h-48">
         <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
@@ -131,10 +133,6 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
     );
   }
 
-  // ESPN player stats structure: stats is an array of objects, one for each team
-  // Each object has 'team' (with name, logo) and 'statistics' (array of categories)
-  // Each category has 'athletes' (array of players with their stats)
-
   return (
     <div className="space-y-8 pb-8">
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -146,7 +144,6 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
           const playersMap = new Map<string, any>();
           
           teamData.statistics?.forEach((category: any) => {
-            // AFL uses 'labels' as keys if 'keys' is missing
             const rawKeys = category.keys || category.labels || [];
             const keys = rawKeys.map((k: string) => k.toLowerCase());
             
@@ -155,8 +152,6 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
               if (!player) return;
               
               const pos = player.position?.abbreviation || player.position?.name;
-
-              // Check if player has valid stats (filter out "--" placeholder for late replacements)
               const hasInvalidStats = athlete.stats?.some((val: string) => val === "--");
               if (hasInvalidStats) return;
 
@@ -169,7 +164,6 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
                 stats: {}
               };
 
-              // Map stat values using lowercase keys
               athlete.stats?.forEach((val: string, i: number) => {
                 const key = keys[i];
                 if (key) {
@@ -177,12 +171,10 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
                 }
               });
 
-              // Add SuperCoach score if available
               if (athlete.supercoach !== undefined) {
                 existing.stats["sc"] = athlete.supercoach;
               }
 
-              // Update jersey if footyinfo guernsey is available
               if (athlete.guernsey !== undefined) {
                 existing.jersey = athlete.guernsey;
               }
@@ -192,8 +184,6 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
           });
 
           const players = Array.from(playersMap.values());
-
-          // Define which stats to show based on sport
           const isSoccer = game.sport === "soccer";
           const isAfl = game.sport === "afl";
           

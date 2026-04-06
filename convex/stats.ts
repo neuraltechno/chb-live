@@ -25,11 +25,23 @@ export const getCachedPlayerStats = internalQuery({
 export const getPlayerStats = query({
   args: { externalId: v.string() },
   handler: async (ctx, { externalId }) => {
-    const record = await ctx.db
+    // 1. Get boxscore/stats from cachedStats
+    const statsRecord = await ctx.db
+      .query("cachedStats")
+      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
+      .unique();
+    
+    // 2. Get athletes/players from cachedPlayerStats (this is where the players array lives)
+    const playerStatsRecord = await ctx.db
       .query("cachedPlayerStats")
       .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
       .unique();
-    return record?.stats || null;
+
+    return {
+      stats: playerStatsRecord?.stats || null, // The players array
+      scoringPlays: statsRecord?.scoringPlays || [],
+      matchStats: statsRecord?.stats || null // Home/Away team stats
+    };
   },
 });
 
@@ -38,8 +50,9 @@ export const saveStatsAndDetectChanges = internalMutation({
     externalId: v.string(),
     stats: v.any(),
     gameId: v.optional(v.string()),
+    scoringPlays: v.optional(v.array(v.any())),
   },
-  handler: async (ctx, { externalId, stats, gameId }) => {
+  handler: async (ctx, { externalId, stats, gameId, scoringPlays }) => {
     const existing = await ctx.db
       .query("cachedStats")
       .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
@@ -85,36 +98,71 @@ export const saveStatsAndDetectChanges = internalMutation({
       await ctx.db.patch(existing._id, {
         stats,
         lastFetched: Date.now(),
+        scoringPlays: scoringPlays || existing.scoringPlays,
       });
     } else {
       await ctx.db.insert("cachedStats", {
         externalId,
         stats,
         lastFetched: Date.now(),
+        scoringPlays,
       });
     }
 
     // Update game root statusDisplay if present in stats
-    if (gameId && (stats.statusDisplay || stats.displayClock || stats.period !== undefined || stats.statusDescription)) {
+    if (gameId && (stats.statusDisplay || stats.displayClock || stats.period !== undefined || stats.statusDescription || scoringPlays)) {
       const gameRecord = await ctx.db
         .query("cachedGames")
         .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
         .unique();
       if (gameRecord) {
-        await ctx.db.patch(gameRecord._id, {
+        const patch: any = {
           statusDisplay: stats.statusDisplay,
           displayClock: stats.displayClock,
           period: stats.period,
           statusDescription: stats.statusDescription,
-          data: { 
-            ...gameRecord.data, 
-            statusDisplay: stats.statusDisplay,
-            displayClock: stats.displayClock,
-            period: stats.period,
-            statusDescription: stats.statusDescription,
-          },
-        });
+        };
+        
+        // Ensure data exists and update it
+        patch.data = { 
+          ...(gameRecord.data || {}), 
+          statusDisplay: stats.statusDisplay,
+          displayClock: stats.displayClock,
+          period: stats.period,
+          statusDescription: stats.statusDescription,
+        };
+        
+        if (scoringPlays) {
+          patch.scoringPlays = scoringPlays;
+        }
+        await ctx.db.patch(gameRecord._id, patch);
       }
+    }
+  },
+});
+
+export const savePlayerStats = internalMutation({
+  args: {
+    externalId: v.string(),
+    stats: v.any(),
+  },
+  handler: async (ctx, { externalId, stats }) => {
+    const existing = await ctx.db
+      .query("cachedPlayerStats")
+      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        stats,
+        lastFetched: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("cachedPlayerStats", {
+        externalId,
+        stats,
+        lastFetched: Date.now(),
+      });
     }
   },
 });
@@ -202,70 +250,3 @@ export const getMatchSupercoachScores = query({
   },
 });
 
-/**
- * Backfill function to populate supercoachScores for past games.
- * This can be run manually from the Convex dashboard.
- */
-export const backfillSupercoachScores = internalAction({
-  args: {
-    roundNumber: v.optional(v.number()), // If provided, only backfill this round
-    limit: v.optional(v.number()),       // Limit number of games to process
-  },
-  handler: async (ctx, args) => {
-    // 1. Get all finished AFL games
-    const games = (await ctx.runQuery(api.games.list, { 
-      sport: "afl",
-      round: args.roundNumber 
-    })) as any[];
-
-    const finishedGames = games.filter(g => g.status === "finished").slice(0, args.limit || 999);
-    console.log(`[Backfill] Starting backfill for ${finishedGames.length} finished AFL games`);
-
-    let processedCount = 0;
-    for (const game of finishedGames) {
-      console.log(`[Backfill] Processing game: ${game.homeTeam.name} vs ${game.awayTeam.name} (${game.id})`);
-      
-      // We call fetchGameStats which now has the logic to upsert SC scores
-      try {
-        await ctx.runAction(api.sportsApi.fetchGameStats, {
-          externalId: game.externalId,
-          leagueId: "afl",
-          gameId: game.id,
-        });
-        processedCount++;
-        // Small delay to avoid hitting rate limits if any
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (e) {
-        console.error(`[Backfill] Error processing game ${game.id}:`, e);
-      }
-    }
-
-    return { processed: processedCount, totalFound: finishedGames.length };
-  },
-});
-
-export const savePlayerStats = internalMutation({
-  args: {
-    externalId: v.string(),
-    stats: v.any(),
-  },
-  handler: async (ctx, { externalId, stats }) => {
-    const existing = await ctx.db
-      .query("cachedPlayerStats")
-      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
-      .unique();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        stats,
-        lastFetched: Date.now(),
-      });
-    } else {
-      await ctx.db.insert("cachedPlayerStats", {
-        externalId,
-        stats,
-        lastFetched: Date.now(),
-      });
-    }
-  },
-});

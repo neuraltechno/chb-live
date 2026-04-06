@@ -456,7 +456,7 @@ export const fetchGameStats = action({
     const game = (await ctx.runQuery(api.games.get, { id: args.gameId })) as Game | null;
     const isFinished = game?.status === "finished";
 
-    // If cache exists and game is finished, check if we need SuperCoach scores
+    // If cache exists and game is finished, check if we need SuperCoach scores or Scoring Plays
     if (cached && isFinished) {
       // 1. Populate player stats if missing (for all sports)
       const playerStats = (await ctx.runQuery(api.stats.getPlayerStats, {
@@ -470,28 +470,40 @@ export const fetchGameStats = action({
         });
       }
 
-      // 2. Check SuperCoach scores for AFL
+      // If cache exists and game is finished, check if we need SuperCoach scores or Scoring Plays
       if (args.leagueId === "afl") {
         const scScores = (await ctx.runQuery(api.stats.getMatchSupercoachScores, {
           externalMatchId: args.externalId,
         })) as any[];
         
-        if (scScores && scScores.length > 0) {
+        const game = (await ctx.runQuery(api.games.get, { id: args.gameId })) as any;
+
+        if (scScores && scScores.length > 0 && game?.scoringPlays && game.scoringPlays.length > 0) {
           return cached.stats;
         }
-        // If no SC scores yet, we fall through to fetch them from FootyInfo
+        // If missing SC scores or Scoring Plays, we fall through to fetch them
       } else {
         return cached.stats;
       }
     }
 
-    // If cache is fresh (less than 60 seconds old for live, or exists for scheduled), return it
-    if (cached && Date.now() - cached.lastFetched < 60_000) {
+    // Special logic for AFL: Bypass cache if scoringPlays are missing from the game record
+    if (args.leagueId === "afl") {
+      const game = (await ctx.runQuery(api.games.get, { id: args.gameId })) as any;
+      if (!game?.scoringPlays || game.scoringPlays.length === 0) {
+        console.log(`[Stats Action] Bypassing cache for AFL game ${args.gameId} because scoringPlays are missing`);
+      } else if (cached && Date.now() - cached.lastFetched < 60_000) {
+        return cached.stats;
+      }
+    } else if (cached && Date.now() - cached.lastFetched < 60_000) {
+      // For other sports, use the standard 60s cache
       return cached.stats;
     }
 
     const slug = ESPN_SPORT_SLUGS[args.leagueId];
     if (!slug) return null;
+
+    let scoringPlays: any[] | undefined = undefined;
 
     try {
       const url = `https://site.api.espn.com/apis/site/v2/sports/${slug}/summary?event=${args.externalId}`;
@@ -530,6 +542,45 @@ export const fetchGameStats = action({
           const roundData = data.header?.week;
           const roundNumber = typeof roundData === "object" ? roundData.number : roundData;
 
+          // Process AFL Scores (plays)
+          const plays = data.plays || [];
+          console.log(`[Stats Action] Found ${plays.length} plays for AFL game ${args.externalId}`);
+          if (plays.length > 0) {
+            scoringPlays = plays
+              .filter((play: any) => {
+                const type = play.type?.type?.toLowerCase();
+                const text = play.type?.text?.toLowerCase();
+                return type === "goal" || type === "behind" || type === "rushed" || text === "rushed";
+              })
+              .map((play: any) => {
+                const participant = play.participants?.[0]?.athlete;
+                const type = play.type?.type?.toLowerCase();
+                const text = play.type?.text?.toLowerCase();
+                // Treat 'rushed' as a 'behind' for AFL logic
+                const resolvedType = (type === "rushed" || text === "rushed") ? "behind" : type;
+                
+                return {
+                  id: String(play.id),
+                  seq: String(play.sequenceNumber),
+                  type: resolvedType,
+                  text: play.text,
+                  home: play.homeScore,
+                  away: play.awayScore,
+                  p: play.period?.number,
+                  clk: play.clock?.displayValue,
+                  tId: String(play.team?.id),
+                  tName: play.team?.id === homeTeamInfo?.team?.id ? homeTeamName : (play.team?.id === awayTeamInfo?.team?.id ? awayTeamName : undefined),
+                  pId: participant ? String(participant.id) : undefined,
+                  pName: participant ? participant.displayName : undefined,
+                  pShort: participant ? participant.shortName : undefined,
+                };
+              });
+            console.log(`[Stats Action] Prepared ${scoringPlays?.length} scoring plays for AFL game ${args.gameId}`);
+          } else {
+            console.log(`[Stats Action] No plays found in data for AFL game ${args.externalId}`);
+          }
+
+          // Fetch SuperCoach scores for AFL
           if (homeTeamName && awayTeamName && startTime) {
             const footyInfoData = (await ctx.runAction(internal.footyinfo.fetchSuperCoachScores, {
               homeTeam: homeTeamName,
@@ -671,6 +722,7 @@ export const fetchGameStats = action({
         externalId: args.externalId,
         stats: result,
         gameId: args.gameId,
+        scoringPlays: (args.leagueId === "afl" ? scoringPlays : undefined),
       });
 
       // 3. Cache player stats separately for the PlayerStats component

@@ -53,6 +53,7 @@ export default defineSchema({
     statusDescription: v.optional(v.string()),
     data: v.any(),
     lastFetched: v.number(),
+    scoringPlays: v.optional(v.array(v.any())),
   })
     .index("by_externalId", ["externalId"])
     .index("by_sport_league", ["sport", "leagueId"])
@@ -100,6 +101,7 @@ export default defineSchema({
     externalId: v.string(),
     stats: v.any(),
     lastFetched: v.number(),
+    scoringPlays: v.optional(v.array(v.any())),
   }).index("by_externalId", ["externalId"]),
 
   cachedPlayerStats: defineTable({

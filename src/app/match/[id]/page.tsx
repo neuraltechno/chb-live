@@ -13,6 +13,7 @@ import { format, parseISO } from "date-fns";
 import MatchStats from "@/components/MatchStats";
 import PlayerStats from "@/components/PlayerStats";
 import MatchSupercoachLeaderboard from "@/components/MatchSupercoachLeaderboard";
+import MatchScoresList from "@/components/MatchScoresList";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useEffect, useState } from "react";
@@ -183,16 +184,31 @@ export default function MatchPage() {
         </div>
       </div>
 
-      {/* Column 3: Chat (15%) */}
-      <div className="lg:w-[15%] flex-shrink-0 bg-dark-900 border-l border-dark-700/50 flex flex-col overflow-hidden relative">
-        <div className="px-4 py-3 border-b border-dark-700/50 bg-dark-900/80 backdrop-blur-sm z-10">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            Match Chat
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-          </h3>
+      {/* Column 3: Chat & Scores (15%) */}
+      <div className="lg:w-[15%] flex-shrink-0 bg-dark-900 border-l border-dark-700/50 flex flex-col h-full overflow-hidden relative">
+        {/* Chat Section */}
+        <div className="flex-[0.6] min-h-0 flex flex-col overflow-hidden border-b border-dark-700/50">
+          <div className="px-4 py-3 border-b border-dark-700/50 bg-dark-900/80 backdrop-blur-sm z-10 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              Match Chat
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+            </h3>
+          </div>
+          <div className="flex-1 relative overflow-hidden">
+            <ChatWindow gameId={gameId} game={game} />
+          </div>
         </div>
-        <div className="flex-1 relative">
-          <ChatWindow gameId={gameId} game={game} />
+
+        {/* Scores Section */}
+        <div className="flex-[0.4] min-h-0 flex flex-col overflow-hidden bg-dark-950/20">
+          <div className="px-4 py-2.5 border-b border-dark-700/50 bg-dark-900/80 backdrop-blur-sm z-10">
+            <h3 className="text-xs font-bold text-dark-300 uppercase tracking-widest flex items-center gap-2">
+              Scoring Plays
+            </h3>
+          </div>
+          <div className="flex-1 relative overflow-hidden">
+            <MatchScoresList gameId={gameId} game={game} />
+          </div>
         </div>
       </div>
     </div>
