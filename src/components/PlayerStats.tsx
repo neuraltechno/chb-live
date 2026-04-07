@@ -222,7 +222,8 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
               { key: "tc", label: "CL" },
               { key: "c", label: "CG" },
               { key: "i50", label: "I50" },
-              { key: "r50", label: "R50" }             
+              { key: "r50", label: "R50" },
+              { key: "de", label: "DE" }             
             ];
           }
 
