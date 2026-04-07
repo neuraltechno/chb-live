@@ -211,6 +211,56 @@ export const upsertSupercoachScores = internalMutation({
   },
 });
 
+export const finalizeGameResults = internalMutation({
+  args: {
+    externalId: v.string(),
+    stats: v.any(),
+    scoringPlays: v.optional(v.array(v.any())),
+  },
+  handler: async (ctx, { externalId, stats, scoringPlays }) => {
+    const existing = await ctx.db
+      .query("cachedStats")
+      .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        stats,
+        lastFetched: Date.now(),
+        scoringPlays: scoringPlays || existing.scoringPlays,
+      });
+    } else {
+      await ctx.db.insert("cachedStats", {
+        externalId,
+        stats,
+        lastFetched: Date.now(),
+        scoringPlays,
+      });
+    }
+
+    // Also cache player stats for the final state
+    if (stats.boxscore?.players) {
+      const existingPlayers = await ctx.db
+        .query("cachedPlayerStats")
+        .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
+        .unique();
+
+      if (existingPlayers) {
+        await ctx.db.patch(existingPlayers._id, {
+          stats: stats.boxscore.players,
+          lastFetched: Date.now(),
+        });
+      } else {
+        await ctx.db.insert("cachedPlayerStats", {
+          externalId,
+          stats: stats.boxscore.players,
+          lastFetched: Date.now(),
+        });
+      }
+    }
+  },
+});
+
 export const getTopSupercoachScores = query({
   args: {
     round: v.optional(v.number()),

@@ -456,47 +456,13 @@ export const fetchGameStats = action({
     const game = (await ctx.runQuery(api.games.get, { id: args.gameId })) as Game | null;
     const isFinished = game?.status === "finished";
 
-    // If cache exists and game is finished, check if we need SuperCoach scores or Scoring Plays
     if (cached && isFinished) {
-      // 1. Populate player stats if missing (for all sports)
-      const playerStats = (await ctx.runQuery(api.stats.getPlayerStats, {
-        externalId: args.externalId,
-      })) as any;
-
-      if (!playerStats && cached.stats?.boxscore?.players) {
-        await ctx.runMutation(internal.stats.savePlayerStats, {
-          externalId: args.externalId,
-          stats: cached.stats.boxscore.players,
-        });
-      }
-
-      // If cache exists and game is finished, check if we need SuperCoach scores or Scoring Plays
-      if (args.leagueId === "afl") {
-        const scScores = (await ctx.runQuery(api.stats.getMatchSupercoachScores, {
-          externalMatchId: args.externalId,
-        })) as any[];
-        
-        const game = (await ctx.runQuery(api.games.get, { id: args.gameId })) as any;
-
-        if (scScores && scScores.length > 0 && game?.scoringPlays && game.scoringPlays.length > 0) {
-          return cached.stats;
-        }
-        // If missing SC scores or Scoring Plays, we fall through to fetch them
-      } else {
-        return cached.stats;
-      }
+      return cached.stats;
     }
 
-    // Special logic for AFL: Bypass cache if scoringPlays are missing from the game record
-    if (args.leagueId === "afl") {
-      const game = (await ctx.runQuery(api.games.get, { id: args.gameId })) as any;
-      if (!game?.scoringPlays || game.scoringPlays.length === 0) {
-        console.log(`[Stats Action] Bypassing cache for AFL game ${args.gameId} because scoringPlays are missing`);
-      } else if (cached && Date.now() - cached.lastFetched < 60_000) {
-        return cached.stats;
-      }
-    } else if (cached && Date.now() - cached.lastFetched < 60_000) {
-      // For other sports, use the standard 60s cache
+    // For live games, don't return from Convex-based cache if it's too old
+    // The frontend should be using the REST API for live data anyway.
+    if (cached && !isFinished && Date.now() - cached.lastFetched < 30_000) {
       return cached.stats;
     }
 

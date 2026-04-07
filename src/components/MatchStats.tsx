@@ -5,6 +5,7 @@ import { Game, SportType } from "@/types";
 import { BarChart2, Loader2, Plus, Minus } from "lucide-react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useGameLiveStats } from "@/hooks/use-game-live-stats";
 
 // ─── Internal Types ────────────────────────────────────────────────────────────
 
@@ -333,6 +334,9 @@ interface MatchStatsProps {
 
 export default function MatchStats({ game }: MatchStatsProps) {
   const fetchStatsAction = useAction(api.sportsApi.fetchGameStats);
+  const { stats: liveStats, isLoading: isLiveLoading } = useGameLiveStats(
+    game.status === "live" || game.status === "halftime" ? game.id : undefined
+  );
   const [rawStats, setRawStats] = useState<RawStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -345,12 +349,16 @@ export default function MatchStats({ game }: MatchStatsProps) {
     }));
   };
 
+  // Initial fetch for non-live games or first load
   useEffect(() => {
-    setIsLoading(true);
-    setRawStats(null);
-    setHasError(false);
+    const fetchInitialStats = async () => {
+      if (liveStats) {
+        setRawStats(liveStats as any);
+        setIsLoading(false);
+        return;
+      }
 
-    const fetchStats = async () => {
+      setIsLoading(true);
       try {
         const result = await fetchStatsAction({
           externalId: game.externalId,
@@ -366,13 +374,16 @@ export default function MatchStats({ game }: MatchStatsProps) {
       }
     };
 
-    fetchStats();
+    fetchInitialStats();
+  }, [game.externalId, game.league.id, game.id, fetchStatsAction, liveStats]);
 
-    if (game.status === "live" || game.status === "halftime") {
-      const interval = setInterval(fetchStats, 60_000);
-      return () => clearInterval(interval);
+  // Update from live stats when available
+  useEffect(() => {
+    if (liveStats) {
+      setRawStats(liveStats as any);
+      setIsLoading(false);
     }
-  }, [game.externalId, game.league.id, game.status, fetchStatsAction]);
+  }, [liveStats]);
 
   const isMatchActive =
     game.status === "live" ||
