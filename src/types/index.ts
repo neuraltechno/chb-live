@@ -76,6 +76,13 @@ export interface ChatRoom {
   messages: Message[];
 }
 
+export interface ChatSettings {
+  gameId: string;
+  slowModeEnabled: boolean;
+  slowModeDelay: number;
+  lastMessageTime?: number;
+}
+
 // ---------- Sports / Games ----------
 export type SportType = "soccer" | "ncaa_football" | "ncaa_basketball" | "afl";
 

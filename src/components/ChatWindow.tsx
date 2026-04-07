@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useChatPolling } from "@/hooks/use-chat-polling";
 
 const QUICK_REACTIONS = ["⚽", "🔥", "😮", "👏", "😂", "💪", "❤️", "😤"];
 
@@ -42,13 +43,25 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // State for slow mode
+  const [slowModeRemaining, setSlowModeRemaining] = useState(0);
+
+  // Track slow mode countdown
+  useEffect(() => {
+    if (slowModeRemaining > 0) {
+      const timer = setTimeout(() => {
+        setSlowModeRemaining(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [slowModeRemaining]);
+
   // Convex Queries & Mutations
-  const messages = useQuery(api.messages.list, { gameId, limit: 100 });
+  const { messages, isLoading: isLoadingMessages, error: chatError, refetch: refetchChat } = useChatPolling(gameId);
   const sendMessageMutation = useMutation(api.messages.send);
   const updatePresence = useMutation(api.presence.update);
   const activeUsersList = useQuery(api.presence.listByGame, { gameId }) || [];
-
-  const isLoadingMessages = messages === undefined;
+  const chatSettings = useQuery(api.chatSettings.get, { gameId });
 
   const typingUsers = useMemo(() => {
     return activeUsersList
@@ -118,8 +131,18 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
       setReplyingTo(null);
       updatePresence({ gameId, isTyping: false });
       inputRef.current?.focus();
-    } catch (error) {
+      
+      // Handle slow mode countdown
+      if (chatSettings?.slowModeEnabled) {
+        setSlowModeRemaining(chatSettings.slowModeDelay);
+      }
+    } catch (error: any) {
       console.error("Failed to send message:", error);
+      // Handle slow mode error message
+      if (error.message?.includes("Slow mode")) {
+        const match = error.message.match(/Wait (\d+)s/);
+        if (match) setSlowModeRemaining(parseInt(match[1]));
+      }
     }
   };
 
@@ -177,6 +200,16 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
         {isLoadingMessages ? (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="w-6 h-6 text-dark-500 animate-spin" />
+          </div>
+        ) : chatError ? (
+          <div className="text-center py-10 text-red-400">
+            <p className="text-sm mb-2">Failed to load messages</p>
+            <button
+              onClick={() => refetchChat()}
+              className="text-xs underline text-dark-400 hover:text-dark-200"
+            >
+              Retry
+            </button>
           </div>
         ) : !messages || messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -292,19 +325,27 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
               >
                 <Smile className="w-5 h-5" />
               </button>
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputValue}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Share your thoughts..."
-                maxLength={500}
-                className="flex-1 bg-dark-800 border border-dark-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/25 transition-all"
-              />
+              <div className="relative flex-1">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={slowModeRemaining > 0 ? `Wait ${slowModeRemaining}s...` : "Share your thoughts..."}
+                  maxLength={500}
+                  disabled={slowModeRemaining > 0}
+                  className="w-full bg-dark-800 border border-dark-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/25 transition-all disabled:opacity-50"
+                />
+                {slowModeRemaining > 0 && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-primary-400 tabular-nums">
+                    {slowModeRemaining}s
+                  </div>
+                )}
+              </div>
               <button
                 onClick={handleSend}
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || slowModeRemaining > 0}
                 className="p-2.5 rounded-xl bg-primary-600 text-white hover:bg-primary-500 disabled:opacity-30 disabled:hover:bg-primary-600 transition-all disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4" />

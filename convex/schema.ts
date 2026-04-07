@@ -38,6 +38,17 @@ export default defineSchema({
         username: v.string(),
       })
     ),
+    // New fields for basic moderation
+    isDeleted: v.optional(v.boolean()), // Soft delete for moderation
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_gameId", ["gameId"]),
+
+  chatSettings: defineTable({
+    gameId: v.string(),
+    slowModeEnabled: v.boolean(),
+    slowModeDelay: v.number(), // seconds
+    lastMessageTime: v.optional(v.number()),
   }).index("by_gameId", ["gameId"]),
 
   cachedGames: defineTable({

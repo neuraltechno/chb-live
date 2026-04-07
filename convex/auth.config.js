@@ -1,8 +1,9 @@
 export default {
   providers: [
     {
-      domain: process.env.CLERK_JWT_ISSUER_DOMAIN,
+      domain: "https://genuine-treefrog-25.clerk.accounts.dev",
       applicationID: "convex",
     },
   ],
 };
+// Updated to ensure Convex picks up the file change
