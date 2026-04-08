@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Search, X } from "lucide-react";
 import { useGameStore } from "@/lib/store";
 import { Game } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface TeamSearchProps {
   games?: Game[];
@@ -80,9 +81,10 @@ export default function TeamSearch({ games = [] }: TeamSearchProps) {
         onChange={(e) => setTeamSearch(e.target.value)}
         onFocus={() => setIsFocused(true)}
         placeholder="Search teams…"
-        className={`w-full pl-9 pr-8 py-2 bg-dark-800/50 border border-dark-700/50 text-sm text-dark-200 placeholder-dark-500 focus:outline-none focus:border-primary-500/50 focus:bg-dark-800 transition-all ${
+        className={cn(
+          "w-full pl-9 pr-8 py-2 bg-dark-800/50 border border-dark-700/50 text-sm text-dark-200 placeholder-dark-500 focus:outline-none focus:border-primary-500/50 focus:bg-dark-800 transition-all",
           showDropdown ? "rounded-t-xl rounded-b-none border-b-0" : "rounded-xl"
-        }`}
+        )}
       />
       {teamSearch && (
         <button

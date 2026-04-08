@@ -2,6 +2,7 @@
 
 import { TeamActivity } from "@/types";
 import { Eye, EyeOff, TrendingUp, MessageSquare } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface TeamActivityCardProps {
   activity: TeamActivity[];
@@ -37,15 +38,17 @@ export default function TeamActivityCard({
       {visible.map((team, i) => (
         <div
           key={team.teamName}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all",
             team.hidden
               ? "bg-dark-800/30 border-dark-700/20 opacity-60"
               : "bg-dark-800/60 border-dark-700/30"
-          }`}
+          )}
         >
           {/* Rank */}
           <span
-            className={`text-xs font-bold w-5 text-center ${
+            className={cn(
+              "text-xs font-bold w-5 text-center",
               i === 0
                 ? "text-amber-400"
                 : i === 1
@@ -53,7 +56,7 @@ export default function TeamActivityCard({
                 : i === 2
                 ? "text-orange-400"
                 : "text-dark-500"
-            }`}
+            )}
           >
             #{i + 1}
           </span>
@@ -88,13 +91,14 @@ export default function TeamActivityCard({
             </div>
             <div className="h-1 bg-dark-700/50 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
                   i === 0
                     ? "bg-amber-500"
                     : i === 1
                     ? "bg-primary-500"
                     : "bg-dark-500"
-                }`}
+                )}
                 style={{ width: `${(team.count / maxCount) * 100}%` }}
               />
             </div>

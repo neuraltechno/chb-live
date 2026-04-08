@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { FavoriteTeam, SportType } from "@/types";
 import { Search, X, Star, Trophy, Dribbble, GraduationCap, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface TeamEntry {
   teamId: string;
@@ -122,9 +123,10 @@ export default function FavoriteTeamsPicker({
                 </p>
                 {team.sport && (
                   <span
-                    className={`mt-0.5 inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${
+                    className={cn(
+                      "mt-0.5 inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full border",
                       SPORT_COLORS[team.sport] ?? "bg-dark-700 text-dark-400 border-dark-600"
-                    }`}
+                    )}
                   >
                     {SPORT_LABELS[team.sport] ?? team.sport}
                   </span>
@@ -177,11 +179,12 @@ export default function FavoriteTeamsPicker({
             <button
               key={tab.id}
               onClick={() => setActiveSport(tab.id)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border",
                 activeSport === tab.id
                   ? "bg-primary-600/20 border-primary-500/40 text-primary-300"
                   : "bg-dark-800/50 border-dark-700/50 text-dark-400 hover:text-dark-200 hover:border-dark-600/50"
-              }`}
+              )}
             >
               {tab.icon}
               {tab.label}
@@ -231,11 +234,13 @@ export default function FavoriteTeamsPicker({
                   key={team.teamId}
                   onClick={() => toggleTeam(team)}
                   disabled={isFull}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left ${
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left",
                     isSelected
                       ? "bg-primary-600/15 text-primary-300"
-                      : "text-dark-200 hover:bg-dark-700/50"
-                  } disabled:opacity-30 disabled:cursor-not-allowed`}
+                      : "text-dark-200 hover:bg-dark-700/50",
+                    "disabled:opacity-30 disabled:cursor-not-allowed"
+                  )}
                 >
                   {/* Logo */}
                   <div className="w-7 h-7 rounded-lg bg-dark-700 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -261,9 +266,10 @@ export default function FavoriteTeamsPicker({
                   {/* Sport badge */}
                   {activeSport === "all" && team.sport && (
                     <span
-                      className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${
+                      className={cn(
+                        "text-[9px] font-medium px-1.5 py-0.5 rounded-full border",
                         SPORT_COLORS[team.sport] ?? "bg-dark-700 text-dark-400 border-dark-600"
-                      }`}
+                      )}
                     >
                       {SPORT_LABELS[team.sport] ?? team.sport}
                     </span>

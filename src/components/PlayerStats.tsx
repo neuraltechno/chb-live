@@ -8,6 +8,7 @@ import { User, Shield, Info, ChevronUp, ChevronDown, Loader2 } from "lucide-reac
 import SCIncreaseBadge from "./SCIncreaseBadge";
 import { useGameLiveStats } from "@/hooks/use-game-live-stats";
 import { Suspense, lazy } from "react";
+import { cn } from "@/lib/utils";
 
 // Lazy load the detailed player statistics tables
 const PlayerStatsTable = lazy(() => Promise.resolve({ default: PlayerStatsTableContent }));
@@ -319,39 +320,45 @@ function PlayerStatsTableContent({
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-dark-700/30 text-dark-400 uppercase tracking-wider font-medium">
-                    <th
-                      className="px-2 py-2.5 min-w-[110px] cursor-pointer hover:text-white transition-colors group"
-                      onClick={() => onSort('name')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Player
-                        <div className={sortConfig.key === 'name' ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity"}>
-                          {sortConfig.key === 'name' ? (
-                            sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                          ) : (
-                            <ChevronDown className="w-3 h-3 text-dark-600" />
-                          )}
-                        </div>
-                      </div>
-                    </th>
-                    {displayStats.map(s => (
                       <th
-                        key={s.key}
-                        className="px-0.5 py-2.5 text-center font-bold text-[13px] cursor-pointer hover:text-white transition-colors group"
-                        onClick={() => onSort(s.key)}
+                        className={cn(
+                          "px-2 py-2.5 min-w-[110px] cursor-pointer hover:text-white transition-colors group",
+                          sortConfig.key === 'name' && "text-white"
+                        )}
+                        onClick={() => onSort('name')}
                       >
-                        <div className="flex items-center justify-center gap-0">
-                          {s.label}
-                          <div className={sortConfig.key === s.key ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity"}>
-                            {sortConfig.key === s.key ? (
-                              sortConfig.direction === 'asc' ? <ChevronUp className="w-1.5 h-1.5" /> : <ChevronDown className="w-1.5 h-1.5" />
+                        <div className="flex items-center gap-1">
+                          Player
+                          <div className={cn(sortConfig.key === 'name' ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity")}>
+                            {sortConfig.key === 'name' ? (
+                              sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                             ) : (
-                              <ChevronDown className="w-1.5 h-1.5 text-dark-600" />
+                              <ChevronDown className="w-3 h-3 text-dark-600" />
                             )}
                           </div>
                         </div>
                       </th>
-                    ))}
+                      {displayStats.map(s => (
+                        <th
+                          key={s.key}
+                          className={cn(
+                            "px-0.5 py-2.5 text-center font-bold text-[13px] cursor-pointer hover:text-white transition-colors group",
+                            sortConfig.key === s.key && "text-white"
+                          )}
+                          onClick={() => onSort(s.key)}
+                        >
+                          <div className="flex items-center justify-center gap-0">
+                            {s.label}
+                            <div className={cn(sortConfig.key === s.key ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity")}>
+                              {sortConfig.key === s.key ? (
+                                sortConfig.direction === 'asc' ? <ChevronUp className="w-1.5 h-1.5" /> : <ChevronDown className="w-1.5 h-1.5" />
+                              ) : (
+                                <ChevronDown className="w-1.5 h-1.5 text-dark-600" />
+                              )}
+                            </div>
+                          </div>
+                        </th>
+                      ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-dark-700/20">
@@ -372,7 +379,10 @@ function PlayerStatsTableContent({
                           <div className="flex items-center justify-center">
                             {getStatValue(player, s.key)}
                           </div>
-                          <div className={`absolute -top-1 left-0 right-0 flex justify-center pointer-events-none transition-opacity duration-200 ${s.key === "sc" && game.sport === "afl" && scIncreases[`${teamIdx}-${player.id}`] ? "opacity-100" : "opacity-0"}`}>
+                          <div className={cn(
+                            "absolute -top-1 left-0 right-0 flex justify-center pointer-events-none transition-opacity duration-200",
+                            s.key === "sc" && game.sport === "afl" && scIncreases[`${teamIdx}-${player.id}`] ? "opacity-100" : "opacity-0"
+                          )}>
                             <SCIncreaseBadge increase={scIncreases[`${teamIdx}-${player.id}`]?.increase ?? 0} />
                           </div>
                         </td>

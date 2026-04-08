@@ -19,6 +19,7 @@ import {
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useChatPolling } from "@/hooks/use-chat-polling";
+import { cn } from "@/lib/utils";
 
 const QUICK_REACTIONS = ["⚽", "🔥", "😮", "👏", "😂", "💪", "❤️", "😤"];
 
@@ -317,11 +318,12 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowReactions(!showReactions)}
-                className={`p-2 rounded-lg transition-colors ${
+                className={cn(
+                  "p-2 rounded-lg transition-colors",
                   showReactions
                     ? "text-primary-400 bg-primary-600/10"
                     : "text-dark-400 hover:text-dark-200"
-                }`}
+                )}
               >
                 <Smile className="w-5 h-5" />
               </button>

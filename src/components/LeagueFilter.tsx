@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 interface LeagueFilterProps {
   selectedRound: number | null;
   onChangeRound: (round: number | null) => void;
@@ -27,11 +29,12 @@ export default function LeagueFilter({
               <button
                 key={round}
                 onClick={() => onChangeRound(round)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap min-w-[32px] ${
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap min-w-[32px]",
                   selectedRound === round
                     ? "bg-primary-600 text-white shadow-md shadow-primary-600/25"
                     : "text-dark-400 hover:text-dark-200 hover:bg-dark-700/50"
-                }`}
+                )}
               >
                 {round}
               </button>

@@ -18,6 +18,7 @@ import DMPanel from "./DMPanel";
 import GameBanner from "./GameBanner";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { cn } from "@/lib/utils";
 
 export default function Navbar() {
   const { isLoaded, isSignedIn, user } = useUser();

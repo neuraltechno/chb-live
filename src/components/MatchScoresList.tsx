@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { ScrollText, Goal, ChevronDown, ChevronRight } from "lucide-react";
 import { Game } from "@/types";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface MatchScoresListProps {
   gameId: string;
@@ -194,9 +195,10 @@ export default function MatchScoresList({ gameId, game }: MatchScoresListProps) 
                       return (
                         <div key={score.id} className="px-4 py-2.5 hover:bg-dark-800/40 transition-colors animate-fade-in">
                           <div className="flex items-start gap-3">
-                            <div className={`mt-1 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                            <div className={cn(
+                              "mt-1 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center",
                               isGoal ? "bg-accent-green/10 text-accent-green" : "bg-accent-yellow/10 text-accent-yellow font-bold text-[10px]"
-                            }`}>
+                            )}>
                               {isGoal ? <Goal className="w-3.5 h-3.5" /> : "1"}
                             </div>
                             
@@ -218,7 +220,7 @@ export default function MatchScoresList({ gameId, game }: MatchScoresListProps) 
                               </div>
                               
                               <p className="text-xs text-dark-100 font-medium leading-relaxed">
-                                <span className={isHome ? "text-primary-400" : "text-dark-300"}>
+                                <span className={cn(isHome ? "text-primary-400" : "text-dark-300")}>
                                   {score.pName || score.pShort || (score.text?.toLowerCase().includes("rushed") ? "Rushed" : "Unknown")}
                                 </span>
                                 {" "}

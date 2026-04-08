@@ -6,6 +6,7 @@ import LiveBadge from "./LiveBadge";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { MessageSquare, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 function MatchCard({ game, onClick }: MatchCardProps) {
   const router = useRouter();
@@ -35,11 +36,13 @@ function MatchCard({ game, onClick }: MatchCardProps) {
   return (
     <button
       onClick={handleClick}
-      className={`w-full text-left group relative bg-dark-800/80 hover:bg-dark-800 rounded-xl border transition-all duration-200 overflow-hidden ${
+      className={cn(
+        "w-full text-left group relative bg-dark-800/80 hover:bg-dark-800 rounded-xl border transition-all duration-200 overflow-hidden",
         isLive
           ? "border-red-500/30 hover:border-red-500/50 shadow-lg shadow-red-500/5"
-          : "border-dark-700/50 hover:border-dark-600/50"
-      } hover:shadow-xl hover:shadow-black/20 hover:-translate-y-0.5`}
+          : "border-dark-700/50 hover:border-dark-600/50",
+        "hover:shadow-xl hover:shadow-black/20 hover:-translate-y-0.5"
+      )}
     >
       {/* Live indicator bar */}
       {isLive && (
@@ -95,23 +98,25 @@ function MatchCard({ game, onClick }: MatchCardProps) {
                 )}
               </div>
               <span
-                className={`text-sm truncate ${
+                className={cn(
+                  "text-sm truncate",
                   isFinished &&
-                  game.homeTeam.score !== undefined &&
-                  game.awayTeam.score !== undefined &&
-                  game.homeTeam.score > game.awayTeam.score
+                    game.homeTeam.score !== undefined &&
+                    game.awayTeam.score !== undefined &&
+                    game.homeTeam.score > game.awayTeam.score
                     ? "text-white font-semibold"
                     : "text-dark-200"
-                }`}
+                )}
               >
                 {game.homeTeam.name}
               </span>
             </div>
             {(isLive || isFinished) && game.homeTeam.score !== undefined && (
               <span
-                className={`text-lg font-bold tabular-nums ml-3 ${
+                className={cn(
+                  "text-lg font-bold tabular-nums ml-3",
                   isLive ? "text-white" : "text-dark-300"
-                }`}
+                )}
               >
                 {game.homeTeam.score}
               </span>
@@ -138,23 +143,25 @@ function MatchCard({ game, onClick }: MatchCardProps) {
                 )}
               </div>
               <span
-                className={`text-sm truncate ${
+                className={cn(
+                  "text-sm truncate",
                   isFinished &&
-                  game.awayTeam.score !== undefined &&
-                  game.homeTeam.score !== undefined &&
-                  game.awayTeam.score > game.homeTeam.score
+                    game.awayTeam.score !== undefined &&
+                    game.homeTeam.score !== undefined &&
+                    game.awayTeam.score > game.homeTeam.score
                     ? "text-white font-semibold"
                     : "text-dark-200"
-                }`}
+                )}
               >
                 {game.awayTeam.name}
               </span>
             </div>
             {(isLive || isFinished) && game.awayTeam.score !== undefined && (
               <span
-                className={`text-lg font-bold tabular-nums ml-3 ${
+                className={cn(
+                  "text-lg font-bold tabular-nums ml-3",
                   isLive ? "text-white" : "text-dark-300"
-                }`}
+                )}
               >
                 {game.awayTeam.score}
               </span>
@@ -162,17 +169,18 @@ function MatchCard({ game, onClick }: MatchCardProps) {
           </div>
 
           {/* Status Display (Middle Column / Centered between teams area) */}
-          {/*{game.statusDisplay && game.statusDisplay !== "undefined" && (
+          {game.statusDisplay && game.statusDisplay !== "undefined" && (
             <div className="flex justify-center -mt-1.5 mb-0.5">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              <span className={cn(
+                "text-[10px] font-bold px-2 py-0.5 rounded-full border",
                 game.sport === "afl" 
-          </div>        ? "text-primary-400 bg-primary-500/10 border-primary-500/20"
+                  ? "text-primary-400 bg-primary-500/10 border-primary-500/20"
                   : "text-dark-400 bg-dark-500/10 border-dark-500/20"
-              }`}>
-          </div>      {game.statusDisplay}
-          </div>    </span>
+              )}>
+                {game.statusDisplay}
+              </span>
             </div>
-          )}*/}
+          )}
         </div>
 
         {/* Footer - Chat & Users info */}

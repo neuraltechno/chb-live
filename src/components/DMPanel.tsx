@@ -16,6 +16,7 @@ import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { useDMStore } from "@/lib/store";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { cn } from "@/lib/utils";
 
 interface DMPanelProps {
   isOpen: boolean;
@@ -37,13 +38,16 @@ function Avatar({
     <img
       src={avatar}
       alt={username}
-      className={`${dims} rounded-full object-cover flex-shrink-0`}
+      className={cn(dims, "rounded-full object-cover flex-shrink-0")}
     />
   ) : (
     <div
-      className={`${dims} rounded-full bg-primary-600/25 flex items-center justify-center flex-shrink-0`}
+      className={cn(
+        dims,
+        "rounded-full bg-primary-600/25 flex items-center justify-center flex-shrink-0"
+      )}
     >
-      <span className={`${text} font-bold text-primary-400`}>
+      <span className={cn(text, "font-bold text-primary-400")}>
         {username.charAt(0).toUpperCase()}
       </span>
     </div>
@@ -158,22 +162,25 @@ export default function DMPanel({ isOpen, onClose }: DMPanelProps) {
   return (
     <>
       <div
-        className={`fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
+        className={cn(
+          "fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity duration-300",
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
+        )}
         onClick={onClose}
       />
 
       <div
-        className={`fixed top-0 right-0 h-full w-full sm:w-[390px] z-[70] flex flex-col bg-dark-900 border-l border-dark-700/40 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={cn(
+          "fixed top-0 right-0 h-full w-full sm:w-[390px] z-[70] flex flex-col bg-dark-900 border-l border-dark-700/40 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
           isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        )}
       >
         {/* List View */}
         <div
-          className={`absolute inset-0 flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          className={cn(
+            "absolute inset-0 flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
             view === "list" ? "translate-x-0" : "-translate-x-full"
-          }`}
+          )}
         >
           <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-dark-700/40">
             <h2 className="text-base font-bold text-white">Messages</h2>
@@ -217,9 +224,10 @@ export default function DMPanel({ isOpen, onClose }: DMPanelProps) {
 
         {/* Chat View */}
         <div
-          className={`absolute inset-0 flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] bg-dark-900 ${
+          className={cn(
+            "absolute inset-0 flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] bg-dark-900",
             view === "chat" ? "translate-x-0" : "translate-x-full"
-          }`}
+          )}
         >
           <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-700/40 bg-dark-850">
             <button onClick={handleBack} className="p-1 rounded-lg text-dark-400 hover:text-white hover:bg-dark-800 transition-colors">
@@ -240,8 +248,11 @@ export default function DMPanel({ isOpen, onClose }: DMPanelProps) {
               </div>
             ) : (
               messages.map((msg: any) => (
-                <div key={msg._id} className={`flex flex-col ${msg.senderId === clerkUser?.id ? "items-end" : "items-start"}`}>
-                  <div className={`max-w-[85%] px-3.5 py-2 rounded-2xl text-sm ${msg.senderId === clerkUser?.id ? "bg-primary-600 text-white rounded-tr-none" : "bg-dark-800 text-dark-100 rounded-tl-none"}`}>
+                <div key={msg._id} className={cn("flex flex-col", msg.senderId === clerkUser?.id ? "items-end" : "items-start")}>
+                  <div className={cn(
+                    "max-w-[85%] px-3.5 py-2 rounded-2xl text-sm",
+                    msg.senderId === clerkUser?.id ? "bg-primary-600 text-white rounded-tr-none" : "bg-dark-800 text-dark-100 rounded-tl-none"
+                  )}>
                     {msg.content}
                   </div>
                   <span className="text-[10px] text-dark-500 mt-1 px-1">{formatTimestamp(msg._id === msg.createdAt ? msg.createdAt : Date.now())}</span>

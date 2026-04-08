@@ -3,6 +3,7 @@
 import { Game } from "@/types";
 import MatchCard from "./MatchCard";
 import { Flame, Clock, CheckCircle, Frown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface MatchListProps {
   games: Game[];
@@ -27,7 +28,7 @@ function SectionHeader({
   if (count === 0) return null;
   return (
     <div className="flex items-center gap-2 mb-3 mt-6 first:mt-0">
-      <div className={`${color}`}>{icon}</div>
+      <div className={cn(color)}>{icon}</div>
       <h2 className="text-sm font-semibold text-dark-300 uppercase tracking-wider">
         {title}
       </h2>

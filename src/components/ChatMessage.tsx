@@ -3,6 +3,7 @@
 import { Message } from "@/types";
 import { format, parseISO } from "date-fns";
 import { Reply } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ChatMessageProps {
   message: Message;
@@ -28,9 +29,10 @@ export default function ChatMessage({ message, isOwnMessage, onClickAvatar, onRe
 
   return (
     <div
-      className={`group flex gap-2.5 animate-slide-up ${
-        isOwnMessage ? "flex-row-reverse" : ""
-      }`}
+      className={cn(
+        "group flex gap-2.5 animate-slide-up",
+        isOwnMessage && "flex-row-reverse"
+      )}
     >
       {/* Avatar */}
       <button
@@ -53,7 +55,12 @@ export default function ChatMessage({ message, isOwnMessage, onClickAvatar, onRe
       </button>
 
       {/* Message Bubble */}
-      <div className={`max-w-[75%] ${isOwnMessage ? "items-end" : "items-start"}`}>
+      <div
+        className={cn(
+          "max-w-[75%]",
+          isOwnMessage ? "items-end" : "items-start"
+        )}
+      >
         {/* Username */}
         {!isOwnMessage && (
           <button
@@ -67,9 +74,10 @@ export default function ChatMessage({ message, isOwnMessage, onClickAvatar, onRe
         {/* Reply preview */}
         {message.replyTo && (
           <div
-            className={`flex items-start gap-1.5 mb-1 px-2.5 py-1.5 rounded-lg border-l-2 border-primary-500/60 bg-dark-700/40 max-w-full ${
-              isOwnMessage ? "ml-auto" : ""
-            }`}
+            className={cn(
+              "flex items-start gap-1.5 mb-1 px-2.5 py-1.5 rounded-lg border-l-2 border-primary-500/60 bg-dark-700/40 max-w-full",
+              isOwnMessage && "ml-auto"
+            )}
           >
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold text-primary-400 truncate">
@@ -93,11 +101,12 @@ export default function ChatMessage({ message, isOwnMessage, onClickAvatar, onRe
             </button>
           )}
           <div
-            className={`px-3 py-2 rounded-2xl text-sm leading-relaxed break-words ${
+            className={cn(
+              "px-3 py-2 rounded-2xl text-sm leading-relaxed break-words",
               isOwnMessage
                 ? "bg-primary-600 text-white rounded-br-md"
                 : "bg-dark-700/80 text-dark-100 rounded-bl-md"
-            }`}
+            )}
           >
             {message.content}
           </div>
@@ -112,9 +121,10 @@ export default function ChatMessage({ message, isOwnMessage, onClickAvatar, onRe
           )}
         </div>
         <p
-          className={`text-[10px] text-dark-500 mt-0.5 px-1 ${
+          className={cn(
+            "text-[10px] text-dark-500 mt-0.5 px-1",
             isOwnMessage ? "text-right" : "text-left"
-          }`}
+          )}
         >
           {time}
         </p>

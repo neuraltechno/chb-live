@@ -6,6 +6,7 @@ import { BarChart2, Loader2, Plus, Minus } from "lucide-react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useGameLiveStats } from "@/hooks/use-game-live-stats";
+import { cn } from "@/lib/utils";
 
 // ─── Internal Types ────────────────────────────────────────────────────────────
 
@@ -291,7 +292,10 @@ function StatBar({
     <div className="px-4 py-1.5">
       <div className="flex items-center gap-3">
         <span
-          className={`text-[12px] font-bold tabular-nums w-8 text-left ${homeLeads ? "text-white" : "text-dark-400"}`}
+          className={cn(
+            "text-[12px] font-bold tabular-nums w-8 text-left",
+            homeLeads ? "text-white" : "text-dark-400"
+          )}
         >
           {stat.home}
         </span>
@@ -303,13 +307,19 @@ function StatBar({
           <div className="flex items-center gap-0.5 h-1">
             <div className="flex-1 flex justify-end overflow-hidden rounded-l-full">
               <div
-                className={`h-full rounded-l-full transition-all duration-700 ease-out ${homeLeads ? homeColor : "bg-dark-600"}`}
+                className={cn(
+                  "h-full rounded-l-full transition-all duration-700 ease-out",
+                  homeLeads ? homeColor : "bg-dark-600"
+                )}
                 style={{ width: `${homeWidth}%` }}
               />
             </div>
             <div className="flex-1 overflow-hidden rounded-r-full">
               <div
-                className={`h-full rounded-r-full transition-all duration-700 ease-out ${awayLeads ? awayColor : "bg-dark-600"}`}
+                className={cn(
+                  "h-full rounded-r-full transition-all duration-700 ease-out",
+                  awayLeads ? awayColor : "bg-dark-600"
+                )}
                 style={{ width: `${awayWidth}%` }}
               />
             </div>
@@ -317,7 +327,10 @@ function StatBar({
         </div>
 
         <span
-          className={`text-[12px] font-bold tabular-nums w-8 text-right ${awayLeads ? "text-white" : "text-dark-400"}`}
+          className={cn(
+            "text-[12px] font-bold tabular-nums w-8 text-right",
+            awayLeads ? "text-white" : "text-dark-400"
+          )}
         >
           {stat.away}
         </span>
@@ -449,8 +462,8 @@ export default function MatchStats({ game }: MatchStatsProps) {
               </div>
             </div>
             <div className="flex h-2.5 rounded-full overflow-hidden gap-px">
-              <div className={`bg-primary-500 transition-all duration-700 ease-out`} style={{ width: `${homePos}%` }} />
-              <div className={`bg-amber-500 transition-all duration-700 ease-out`} style={{ width: `${awayPos}%` }} />
+              <div className={cn("bg-primary-500 transition-all duration-700 ease-out")} style={{ width: `${homePos}%` }} />
+              <div className={cn("bg-amber-500 transition-all duration-700 ease-out")} style={{ width: `${awayPos}%` }} />
             </div>
             <div className="flex items-center justify-between mt-2">
               <span className="text-[11px] text-dark-500 truncate">{game.homeTeam.shortName}</span>

@@ -10,6 +10,7 @@ import Top10Supercoach from "@/components/Top10Supercoach";
 import { RefreshCw, Zap, TrendingUp, Globe } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Game } from "@/types";
+import { cn } from "@/lib/utils";
 
 export default function HomePage() {
   const selectedSport = useGameStore((s) => s.selectedSport);
@@ -122,9 +123,7 @@ export default function HomePage() {
                   className="p-2 rounded-lg bg-dark-800/50 border border-dark-700/50 text-dark-400 opacity-50 cursor-default"
                   title="Auto-refreshing"
                 >
-                  <RefreshCw
-                    className={`w-4 h-4`}
-                  />
+                  <RefreshCw className="w-4 h-4" />
                 </button>
               </div>
             </div>

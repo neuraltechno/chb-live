@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { Trophy, Users, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface Top10SupercoachProps {
   round?: number;
@@ -59,12 +60,15 @@ export default function Top10Supercoach({ round }: Top10SupercoachProps) {
               >
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <span className={`absolute -top-1 -left-1 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-black z-10 border-2 border-dark-900 ${
-                      index === 0 ? "bg-yellow-500 text-dark-950" :
-                      index === 1 ? "bg-slate-300 text-dark-950" :
-                      index === 2 ? "bg-amber-600 text-white" :
-                      "bg-dark-700 text-dark-300"
-                    }`}>
+                    <span
+                      className={cn(
+                        "absolute -top-1 -left-1 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-black z-10 border-2 border-dark-900",
+                        index === 0 ? "bg-yellow-500 text-dark-950" :
+                        index === 1 ? "bg-slate-300 text-dark-950" :
+                        index === 2 ? "bg-amber-600 text-white" :
+                        "bg-dark-700 text-dark-300"
+                      )}
+                    >
                       {index + 1}
                     </span>
                     <div className="w-10 h-10 rounded-full bg-dark-800 border border-dark-700 overflow-hidden relative">
