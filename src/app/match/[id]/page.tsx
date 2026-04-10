@@ -17,28 +17,25 @@ import MatchScoresList from "@/components/MatchScoresList";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useEffect, useState } from "react";
+import { useGameLiveStats } from "@/hooks/use-game-live-stats";
 
-function TeamScoreAfl({ team, gameExternalId, leagueId, gameId, onStatusUpdate }: { team: any, gameExternalId: string, leagueId: string, gameId: string, onStatusUpdate: (status: string) => void }) {
-  const fetchStats = useAction(api.sportsApi.fetchGameStats);
-  const [stats, setStats] = useState<any>(null);
+function TeamScoreAfl({ team, gameExternalId, leagueId, gameId, onStatusUpdate, liveStats }: { team: any, gameExternalId: string, leagueId: string, gameId: string, onStatusUpdate: (status: string) => void, liveStats?: any }) {
+  const convexStatsRecord = useQuery(api.stats.getPlayerStats, { externalId: gameExternalId });
+  const stats = liveStats || convexStatsRecord?.matchStats;
 
   useEffect(() => {
-    fetchStats({ externalId: gameExternalId, leagueId, gameId }).then((res) => {
-      setStats(res);
-      // If we are on the match page, we can use the 'sts' from FootyInfo for AFL
-      if (res?.sts && leagueId === "afl") {
-        const sts = res.sts.toLowerCase();
-        if (sts.includes("end of") || sts === "halftime") {
-           onStatusUpdate(res.sts);
-        }
+    if (stats?.sts && leagueId === "afl") {
+      const sts = stats.sts.toLowerCase();
+      if (sts.includes("end of") || sts === "halftime") {
+         onStatusUpdate(stats.sts);
       }
-    });
-  }, [gameExternalId, leagueId, gameId, fetchStats, onStatusUpdate]);
+    }
+  }, [stats, leagueId, onStatusUpdate]);
 
-  if (!stats || !stats.home || !stats.away) return <span>{team.score}</span>;
+  if (!stats) return <span>{team.score}</span>;
 
   // Find which side matches our passed team ID
-  const side = (stats.home.teamId === String(team.id)) ? 'home' : 'away';
+  const side = (stats.home?.teamId === String(team.id)) ? 'home' : 'away';
   const goals = stats[side]?.goals || "0";
   const behinds = stats[side]?.behinds || "0";
 
@@ -52,6 +49,10 @@ export default function MatchPage() {
   const [detailStatus, setDetailStatus] = useState<string | null>(null);
 
   const game = useQuery(api.games.get, { id: gameId });
+  const { stats: liveStats } = useGameLiveStats(
+    game?.status === "live" || game?.status === "halftime" ? gameId : undefined
+  );
+  
   const isLoading = game === undefined;
 
   useEffect(() => {
@@ -128,6 +129,7 @@ export default function MatchPage() {
                 leagueId={game.league.id} 
                 gameId={game.id} 
                 onStatusUpdate={setDetailStatus}
+                liveStats={liveStats}
               />
             </div>
           )}
@@ -138,7 +140,7 @@ export default function MatchPage() {
               awayTeam={game.awayTeam}
             />
           )}
-          <MatchStats game={game} />
+          <MatchStats game={game} liveStats={liveStats} />
         </div>
       </div>
 
@@ -180,7 +182,7 @@ export default function MatchPage() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-          <PlayerStats game={game} />
+          <PlayerStats game={game} liveStats={liveStats} />
         </div>
       </div>
 
@@ -207,7 +209,7 @@ export default function MatchPage() {
             </h3>
           </div>
           <div className="flex-1 relative overflow-hidden">
-            <MatchScoresList gameId={gameId} game={game} />
+            <MatchScoresList gameId={gameId} game={game} liveStats={liveStats} />
           </div>
         </div>
       </div>

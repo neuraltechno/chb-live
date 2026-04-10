@@ -14,7 +14,11 @@ const globalForCache = global as unknown as {
   gameCache: LRUCache<string, any>;
 };
 
-export const gameCache = globalForCache.gameCache || new LRUCache(options);
+export const gameCache = globalForCache.gameCache || new LRUCache({
+  ...options,
+  // Allow individual set calls to override TTL
+  noDisposeOnSet: true,
+});
 
 if (process.env.NODE_ENV !== 'production') {
   globalForCache.gameCache = gameCache;

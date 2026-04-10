@@ -7,12 +7,15 @@ export function useGameLiveStats(gameId: string | undefined) {
     gameId ? `/api/game/${gameId}/live` : null,
     fetcher,
     {
-      // Poll every 30 seconds as per the migration plan
-      refreshInterval: 30000,
+      // Poll every 15 seconds for live games
+      refreshInterval: 15000,
       // Revalidate when window gets focus for better UX
       revalidateOnFocus: true,
       // Keep previous data while fetching new data
       keepPreviousData: true,
+      // Always revalidate even if data is cached
+      revalidateOnMount: true,
+      dedupingInterval: 2000,
     }
   );
 

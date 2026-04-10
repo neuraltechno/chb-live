@@ -343,13 +343,16 @@ function StatBar({
 
 interface MatchStatsProps {
   game: Game;
+  liveStats?: any;
 }
 
-export default function MatchStats({ game }: MatchStatsProps) {
+export default function MatchStats({ game, liveStats: passedLiveStats }: MatchStatsProps) {
   const fetchStatsAction = useAction(api.sportsApi.fetchGameStats);
-  const { stats: liveStats, isLoading: isLiveLoading } = useGameLiveStats(
-    game.status === "live" || game.status === "halftime" ? game.id : undefined
+  const { stats: polledLiveStats, isLoading: isLiveLoading } = useGameLiveStats(
+    !passedLiveStats && (game.status === "live" || game.status === "halftime") ? game.id : undefined
   );
+  
+  const liveStats = passedLiveStats || polledLiveStats;
   const [rawStats, setRawStats] = useState<RawStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);

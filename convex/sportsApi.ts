@@ -456,13 +456,13 @@ export const fetchGameStats = action({
     const game = (await ctx.runQuery(api.games.get, { id: args.gameId })) as Game | null;
     const isFinished = game?.status === "finished";
 
-    if (cached && isFinished) {
+    // For live games, don't return from Convex-based cache if it's too old
+    // We allow 60 seconds for live updates.
+    if (cached && !isFinished && Date.now() - (cached.lastFetched || 0) < 60_000) {
       return cached.stats;
     }
 
-    // For live games, don't return from Convex-based cache if it's too old
-    // The frontend should be using the REST API for live data anyway.
-    if (cached && !isFinished && Date.now() - cached.lastFetched < 30_000) {
+    if (cached && isFinished) {
       return cached.stats;
     }
 

@@ -13,18 +13,14 @@ import { cn } from "@/lib/utils";
 // Lazy load the detailed player statistics tables
 const PlayerStatsTable = lazy(() => Promise.resolve({ default: PlayerStatsTableContent }));
 
-function TeamScoreAfl({ team, gameExternalId, leagueId, gameId }: { team: any, gameExternalId: string, leagueId: string, gameId: string }) {
-  const fetchStats = useAction(api.sportsApi.fetchGameStats);
-  const [stats, setStats] = useState<any>(null);
+function TeamScoreAfl({ team, gameExternalId, leagueId, gameId, liveStats }: { team: any, gameExternalId: string, leagueId: string, gameId: string, liveStats?: any }) {
+  const convexStatsRecord = useQuery(api.stats.getPlayerStats, { externalId: gameExternalId });
+  const stats = liveStats || convexStatsRecord?.matchStats;
 
-  useEffect(() => {
-    fetchStats({ externalId: gameExternalId, leagueId, gameId }).then(setStats);
-  }, [gameExternalId, leagueId, gameId, fetchStats]);
-
-  if (!stats || !stats.home || !stats.away) return <span>{team.score}</span>;
+  if (!stats) return <span>{team.score}</span>;
 
   // Use the team ID to find the correct side from the summary stats
-  const side = String(stats.home.teamId) === String(team.id) ? 'home' : 'away';
+  const side = String(stats.home?.teamId) === String(team.id) ? 'home' : 'away';
   const goals = stats[side]?.goals || "0";
   const behinds = stats[side]?.behinds || "0";
 
@@ -33,21 +29,72 @@ function TeamScoreAfl({ team, gameExternalId, leagueId, gameId }: { team: any, g
 
 interface PlayerStatsProps {
   game: Game;
+  liveStats?: any;
 }
 
-export default function PlayerStats({ game }: PlayerStatsProps) {
+export default function PlayerStats({ game, liveStats: passedLiveStats }: PlayerStatsProps) {
   const convexStatsRecord = useQuery(api.stats.getPlayerStats, { externalId: game.externalId });
-  const { stats: liveStatsRecord } = useGameLiveStats(
-    game.status === "live" || game.status === "halftime" ? game.id : undefined
+  const { stats: polledLiveStats } = useGameLiveStats(
+    !passedLiveStats && (game.status === "live" || game.status === "halftime") ? game.id : undefined
   );
 
+  const liveStatsRecord = passedLiveStats || polledLiveStats;
+
   const stats = useMemo(() => {
-    // If we have live stats from the API, prefer them
-    if (liveStatsRecord?.boxscore?.players) {
-      return liveStatsRecord.boxscore.players;
+    // If we have live stats from the API, prefer them as the base
+    const baseStats = liveStatsRecord?.boxscore?.players || convexStatsRecord?.stats;
+    
+    if (!baseStats || !Array.isArray(baseStats)) return baseStats;
+
+    // If we are using live stats, they won't have supercoach scores.
+    // Merge them from Convex cached stats if available.
+    if (liveStatsRecord?.boxscore?.players && convexStatsRecord?.stats) {
+      // Create a map of athlete ID -> supercoach score from convex data
+      const scMap = new Map<string, number>();
+      const guernseyMap = new Map<string, string>();
+
+      convexStatsRecord.stats.forEach((teamData: any) => {
+        teamData.statistics?.forEach((category: any) => {
+          category.athletes?.forEach((athleteData: any) => {
+            if (athleteData.athlete?.id) {
+              const id = String(athleteData.athlete.id);
+              if (athleteData.supercoach !== undefined) {
+                scMap.set(id, athleteData.supercoach);
+              }
+              if (athleteData.guernsey !== undefined) {
+                guernseyMap.set(id, athleteData.guernsey);
+              }
+            }
+          });
+        });
+      });
+
+      // Inject into live stats
+      return baseStats.map((teamData: any) => ({
+        ...teamData,
+        statistics: (teamData.statistics || []).map((category: any) => ({
+          ...category,
+          athletes: (category.athletes || []).map((athleteData: any) => {
+            const id = athleteData.athlete?.id ? String(athleteData.athlete.id) : null;
+            if (!id) return athleteData;
+
+            const sc = scMap.get(id);
+            const guernsey = guernseyMap.get(id);
+
+            if (sc !== undefined || guernsey !== undefined) {
+              return {
+                ...athleteData,
+                supercoach: athleteData.supercoach ?? sc,
+                guernsey: athleteData.guernsey ?? guernsey
+              };
+            }
+            return athleteData;
+          })
+        }))
+      }));
     }
-    // Fall back to Convex for finished games or initial load
-    return convexStatsRecord?.stats;
+
+    return baseStats;
   }, [liveStatsRecord, convexStatsRecord]);
 
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
@@ -153,7 +200,7 @@ export default function PlayerStats({ game }: PlayerStatsProps) {
   return (
     <div className="space-y-8 pb-8">
       <Suspense fallback={<div className="flex items-center justify-center h-48"><Loader2 className="animate-spin" /></div>}>
-        <PlayerStatsTable game={game} stats={stats} sortConfig={sortConfig} onSort={handleSort} scIncreases={scIncreases} />
+        <PlayerStatsTable game={game} stats={stats} sortConfig={sortConfig} onSort={handleSort} scIncreases={scIncreases} liveStats={liveStatsRecord} />
       </Suspense>
     </div>
   );
@@ -164,13 +211,15 @@ function PlayerStatsTableContent({
   stats, 
   sortConfig, 
   onSort, 
-  scIncreases 
+  scIncreases,
+  liveStats
 }: { 
   game: Game, 
   stats: any[], 
   sortConfig: any, 
   onSort: (key: string) => void, 
-  scIncreases: any 
+  scIncreases: any,
+  liveStats: any
 }) {
   const getStatValue = (player: any, key: string) => {
     if (key === 'name') return player.name;
@@ -308,6 +357,7 @@ function PlayerStatsTableContent({
                       gameExternalId={game.externalId} 
                       leagueId={game.league.id} 
                       gameId={game.id} 
+                      liveStats={liveStats}
                     />
                   ) : (
                     teamIdx === 0 ? game.homeTeam.score : game.awayTeam.score

@@ -10,33 +10,54 @@ import { cn } from "@/lib/utils";
 interface MatchScoresListProps {
   gameId: string;
   game: Game;
+  liveStats?: any;
 }
 
-export default function MatchScoresList({ gameId, game }: MatchScoresListProps) {
+export default function MatchScoresList({ gameId, game, liveStats }: MatchScoresListProps) {
   const [scores, setScores] = useState<any[]>([]);
   const [expandedPeriods, setExpandedPeriods] = useState<Record<number, boolean>>({});
   const fetchStats = useAction(api.sportsApi.fetchGameStats);
   
   const statsRecord = useQuery(api.stats.getPlayerStats, { externalId: game.externalId });
 
+  // Update from liveStats if available (passed from parent or polling)
   useEffect(() => {
-    fetchStats({ 
-      externalId: game.externalId, 
-      leagueId: game.league.id, 
-      gameId: game.id 
-    }).then((res: any) => {
-      if (res?.scoringPlays) {
-        setScores(res.scoringPlays);
-        // Initialize all periods as expanded
-        const periods = [...new Set(res.scoringPlays.map((s: any) => s.p))];
+    if (liveStats?.scoringPlays) {
+      setScores(liveStats.scoringPlays);
+      // If we don't have any periods expanded yet, expand them all
+      if (Object.keys(expandedPeriods).length === 0) {
+        const periods = [...new Set(liveStats.scoringPlays.map((s: any) => s.p))];
         const initialExpanded: Record<number, boolean> = {};
         periods.forEach((p: any) => {
           initialExpanded[p] = true;
         });
         setExpandedPeriods(initialExpanded);
       }
-    });
-  }, [game.externalId, game.league.id, game.id, fetchStats]);
+    }
+  }, [liveStats]);
+
+  // The initial fetch is still useful for immediate data if Convex cache is empty,
+  // but real-time updates now come from the liveStats prop (which polls the API)
+  useEffect(() => {
+    if (!statsRecord && !liveStats) {
+      fetchStats({ 
+        externalId: game.externalId, 
+        leagueId: game.league.id, 
+        gameId: game.id 
+      }).then((res: any) => {
+        if (res?.scoringPlays && !statsRecord) {
+          setScores(res.scoringPlays);
+          // Initialize all periods as expanded
+          const periods = [...new Set(res.scoringPlays.map((s: any) => s.p))];
+          const initialExpanded: Record<number, boolean> = {};
+          periods.forEach((p: any) => {
+            initialExpanded[p] = true;
+          });
+          setExpandedPeriods(initialExpanded);
+        }
+      });
+    }
+  }, [game.externalId, game.league.id, game.id, fetchStats, statsRecord]);
 
   useEffect(() => {
     if (statsRecord?.scoringPlays) {
