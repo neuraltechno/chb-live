@@ -62,6 +62,7 @@ export const saveStatsAndDetectChanges = internalMutation({
       const oldStats = existing.stats;
 
       // --- Change Detection Logic ---
+      /*
       const detectors = [
         { key: "goals", label: "Goal", icon: "⚽" },
         { key: "touchdowns", label: "Touchdown", icon: "🏈" },
@@ -92,6 +93,7 @@ export const saveStatsAndDetectChanges = internalMutation({
           });
         }
       }
+      */
     }
 
     if (existing) {
