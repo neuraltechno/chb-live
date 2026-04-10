@@ -142,4 +142,30 @@ export default defineSchema({
     .index("by_team_score", ["teamId", "score"]) // For Team Top 10
     .index("by_round_score", ["round", "score"]) // For Round Top 10
     .index("by_player", ["playerId", "timestamp"]), // For Player history
+
+  statSnapshots: defineTable({
+    gameId: v.string(), // externalMatchId
+    timestamp: v.number(),
+    topPerformers: v.array(
+      v.object({
+        pId: v.string(),
+        sc: v.number(),
+      })
+    ),
+    teamScores: v.array(
+      v.object({
+        teamId: v.string(),
+        score: v.number(),
+      })
+    ),
+  })
+    .index("by_gameId_timestamp", ["gameId", "timestamp"])
+    .index("by_gameId", ["gameId"]),
+
+  gameMomentum: defineTable({
+    gameId: v.string(), // externalMatchId
+    lastScoringTeamId: v.optional(v.string()),
+    consecutiveScores: v.number(),
+    recentAlerts: v.array(v.string()),
+  }).index("by_gameId", ["gameId"]),
 });

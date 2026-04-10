@@ -41,6 +41,8 @@ module.exports = {
           yellow: "#eab308",
           orange: "#f97316",
           cyan: "#06b6d4",
+          blue: "#3b82f6",
+          "blue-light": "#60a5fa",
         },
         live: "#ef4444",
       },

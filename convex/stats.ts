@@ -1,6 +1,154 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, query, internalAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internalMutation, internalQuery, query, internalAction, MutationContext } from "./_generated/server";
+import { api, internal } from "./_generated/api";
+
+const MOMENTUM_THRESHOLD = 3;
+const VELOCITY_THRESHOLD = 15;
+const SNAPSHOT_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+async function detectMomentum(
+  ctx: MutationContext,
+  gameId: string,
+  externalId: string,
+  scoringPlays: any[]
+) {
+  if (!scoringPlays || scoringPlays.length === 0) return;
+
+  const momentum = await ctx.db
+    .query("gameMomentum")
+    .withIndex("by_gameId", (q) => q.eq("gameId", externalId))
+    .unique();
+
+  const lastPlay = scoringPlays[scoringPlays.length - 1];
+  const lastTeamId = lastPlay.team?.id;
+  if (!lastTeamId) return;
+
+  let consecutiveScores = 1;
+  let recentAlerts = momentum?.recentAlerts || [];
+
+  if (momentum && momentum.lastScoringTeamId === lastTeamId) {
+    consecutiveScores = momentum.consecutiveScores + 1;
+  }
+
+  // Trigger alert if threshold met and not already alerted for this streak
+  const alertKey = `momentum_${lastTeamId}_${consecutiveScores}`;
+  if (consecutiveScores >= MOMENTUM_THRESHOLD && !recentAlerts.includes(alertKey)) {
+    const teamName = lastPlay.team?.displayName || "The team";
+    await ctx.db.insert("messages", {
+      gameId,
+      content: `🔥 Momentum Alert: ${teamName} has scored the last ${consecutiveScores} times!`,
+      username: "MatchBot",
+      type: "text",
+    });
+    recentAlerts.push(alertKey);
+    // Keep alerts array manageable
+    if (recentAlerts.length > 10) recentAlerts.shift();
+  }
+
+  if (momentum) {
+    await ctx.db.patch(momentum._id, {
+      lastScoringTeamId: lastTeamId,
+      consecutiveScores,
+      recentAlerts,
+    });
+  } else {
+    await ctx.db.insert("gameMomentum", {
+      gameId: externalId,
+      lastScoringTeamId: lastTeamId,
+      consecutiveScores,
+      recentAlerts,
+    });
+  }
+}
+
+async function detectVelocity(
+  ctx: MutationContext,
+  gameId: string,
+  externalId: string,
+  currentScores: any[]
+) {
+  const fiveMinsAgo = Date.now() - SNAPSHOT_INTERVAL;
+  const snapshot = await ctx.db
+    .query("statSnapshots")
+    .withIndex("by_gameId_timestamp", (q) =>
+      q.eq("gameId", externalId).gte("timestamp", fiveMinsAgo)
+    )
+    .order("asc")
+    .first();
+
+  if (!snapshot) return;
+
+  const momentum = await ctx.db
+    .query("gameMomentum")
+    .withIndex("by_gameId", (q) => q.eq("gameId", externalId))
+    .unique();
+
+  let recentAlerts = momentum?.recentAlerts || [];
+  let alerted = false;
+
+  for (const player of currentScores) {
+    const oldPlayer = snapshot.topPerformers.find((p) => p.pId === player.playerId);
+    if (oldPlayer) {
+      const diff = player.score - oldPlayer.sc;
+      const alertKey = `velocity_${player.playerId}_${Math.floor(player.score / 10)}`;
+      
+      if (diff >= VELOCITY_THRESHOLD && !recentAlerts.includes(alertKey)) {
+        await ctx.db.insert("messages", {
+          gameId,
+          content: `⚡ Performance Alert: ${player.playerName} has scored ${diff} SuperCoach points in the last 5 minutes!`,
+          username: "MatchBot",
+          type: "text",
+        });
+        recentAlerts.push(alertKey);
+        alerted = true;
+      }
+    }
+  }
+
+  if (alerted) {
+    if (momentum) {
+      await ctx.db.patch(momentum._id, { recentAlerts });
+    } else {
+      await ctx.db.insert("gameMomentum", {
+        gameId: externalId,
+        consecutiveScores: 0,
+        recentAlerts,
+      });
+    }
+  }
+}
+
+async function createSnapshot(
+  ctx: MutationContext,
+  externalId: string,
+  currentScores: any[],
+  stats: any
+) {
+  const lastSnapshot = await ctx.db
+    .query("statSnapshots")
+    .withIndex("by_gameId", (q) => q.eq("gameId", externalId))
+    .order("desc")
+    .first();
+
+  if (!lastSnapshot || Date.now() - lastSnapshot.timestamp >= SNAPSHOT_INTERVAL) {
+    const topPerformers = currentScores
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10)
+      .map((p) => ({ pId: p.playerId, sc: p.score }));
+
+    const teamScores = [
+      { teamId: "home", score: parseInt(stats.home?.score || "0") },
+      { teamId: "away", score: parseInt(stats.away?.score || "0") },
+    ];
+
+    await ctx.db.insert("statSnapshots", {
+      gameId: externalId,
+      timestamp: Date.now(),
+      topPerformers,
+      teamScores,
+    });
+  }
+}
 
 export const getCachedStats = internalQuery({
   args: { externalId: v.string() },
@@ -58,42 +206,26 @@ export const saveStatsAndDetectChanges = internalMutation({
       .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
       .unique();
 
-    if (existing && gameId) {
-      const oldStats = existing.stats;
+    if (gameId) {
+      // 1. Get current top scores for velocity detection
+      const currentScores = await ctx.db
+        .query("supercoachScores")
+        .withIndex("by_match_score", (q) => q.eq("externalMatchId", externalId))
+        .order("desc")
+        .take(20);
 
-      // --- Change Detection Logic ---
-      /*
-      const detectors = [
-        { key: "goals", label: "Goal", icon: "⚽" },
-        { key: "touchdowns", label: "Touchdown", icon: "🏈" },
-        { key: "fieldGoalsMade", label: "Field Goal", icon: "🏀" },
-        { key: "behinds", label: "Behind", icon: "🏉" },
-      ];
-
-      for (const { key, label, icon } of detectors) {
-        const oldHome = parseInt(oldStats.home?.[key] || "0");
-        const newHome = parseInt(stats.home?.[key] || "0");
-        const oldAway = parseInt(oldStats.away?.[key] || "0");
-        const newAway = parseInt(stats.away?.[key] || "0");
-
-        if (newHome > oldHome) {
-          await ctx.db.insert("messages", {
-            gameId,
-            content: `${icon} ${label}! The home team just scored!`,
-            username: "MatchBot",
-            type: "text",
-          });
-        }
-        if (newAway > oldAway) {
-          await ctx.db.insert("messages", {
-            gameId,
-            content: `${icon} ${label}! The away team just scored!`,
-            username: "MatchBot",
-            type: "text",
-          });
-        }
+      // 2. Detect Momentum (Scoring streaks)
+      if (scoringPlays) {
+        await detectMomentum(ctx, gameId, externalId, scoringPlays);
       }
-      */
+
+      // 3. Detect Velocity (Rapid SC gain)
+      if (currentScores.length > 0) {
+        await detectVelocity(ctx, gameId, externalId, currentScores);
+      }
+
+      // 4. Create periodic snapshot
+      await createSnapshot(ctx, externalId, currentScores, stats);
     }
 
     if (existing) {
