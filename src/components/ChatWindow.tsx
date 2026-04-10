@@ -20,8 +20,9 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useChatPolling } from "@/hooks/use-chat-polling";
 import { cn } from "@/lib/utils";
+import EmojiPicker, { Theme, SuggestionMode } from "emoji-picker-react";
 
-const QUICK_REACTIONS = ["⚽", "🔥", "😮", "👏", "😂", "💪", "❤️", "😤"];
+const QUICK_REACTIONS = ["🏉", "🔥", "😮", "👏", "😂", "💪", "❤️", "😤"];
 
 interface ChatWindowProps {
   gameId: string;
@@ -109,8 +110,9 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
   }, []);
 
   // Handle sending message
-  const handleSend = async () => {
-    if (!inputValue.trim() || !isSignedIn) return;
+  const handleSend = async (overrideContent?: string) => {
+    const contentToSend = overrideContent || inputValue.trim();
+    if (!contentToSend || !isSignedIn) return;
 
     const replyData = replyingTo
       ? {
@@ -123,15 +125,17 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
     try {
       await sendMessageMutation({
         gameId,
-        content: inputValue.trim(),
+        content: contentToSend,
         type: "text",
         replyTo: replyData,
       });
 
-      setInputValue("");
-      setReplyingTo(null);
-      updatePresence({ gameId, isTyping: false });
-      inputRef.current?.focus();
+      if (!overrideContent) {
+        setInputValue("");
+        setReplyingTo(null);
+        updatePresence({ gameId, isTyping: false });
+        inputRef.current?.focus();
+      }
       
       // Handle slow mode countdown
       if (chatSettings?.slowModeEnabled) {
@@ -160,6 +164,13 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
     } catch (error) {
       console.error("Failed to send reaction:", error);
     }
+  };
+
+  // Handle Emoji Select
+  const onEmojiClick = (emojiData: any) => {
+    setInputValue((prev) => prev + emojiData.emoji);
+    setShowReactions(false);
+    inputRef.current?.focus();
   };
 
   // Handle typing
@@ -196,7 +207,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-thin"
+        className="flex-1 overflow-y-auto px-4 py-2 space-y-1.5 scrollbar-thin"
       >
         {isLoadingMessages ? (
           <div className="flex items-center justify-center py-10">
@@ -235,6 +246,9 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
                   _id: msg.userId,
                   username: msg.username,
                   avatar: msg.userAvatar,
+                  role: msg.userRole,
+           
+                  badges: msg.userBadges,
                 },
               }}
               isOwnMessage={clerkUser?.id === msg.userId || clerkUser?.id === msg.clerkId} // Adjusted for Convex IDs
@@ -276,18 +290,30 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
         </button>
       )}
 
-      {/* Quick Reactions */}
+      {/* Quick Reactions & Emoji Picker */}
       {showReactions && isSignedIn && (
-        <div className="flex items-center gap-1 px-4 py-2 border-t border-dark-700/50 bg-dark-850 animate-slide-up">
-          {QUICK_REACTIONS.map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => handleReaction(emoji)}
-              className="w-10 h-10 rounded-xl hover:bg-dark-700/50 flex items-center justify-center text-xl transition-all hover:scale-110"
-            >
-              {emoji}
-            </button>
-          ))}
+        <div className="flex flex-col border-t border-dark-700/50 bg-dark-850 animate-slide-up relative">
+          <div className="flex items-center gap-1 px-4 py-2 border-b border-dark-700/50">
+            {QUICK_REACTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => handleReaction(emoji)}
+                className="w-10 h-10 rounded-xl hover:bg-dark-700/50 flex items-center justify-center text-2xl transition-all hover:scale-110"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+          <div className="h-[350px] w-full">
+            <EmojiPicker
+              onEmojiClick={onEmojiClick}
+              theme={Theme.DARK}
+              width="100%"
+              height="100%"
+              skinTonesDisabled
+              searchPlaceholder="Search emojis..."
+            />
+          </div>
         </div>
       )}
 
@@ -346,7 +372,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
                 )}
               </div>
               <button
-                onClick={handleSend}
+                onClick={() => handleSend()}
                 disabled={!inputValue.trim() || slowModeRemaining > 0}
                 className="p-2.5 rounded-xl bg-primary-600 text-white hover:bg-primary-500 disabled:opacity-30 disabled:hover:bg-primary-600 transition-all disabled:cursor-not-allowed"
               >
@@ -376,7 +402,6 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
   );
 }
 
-// Dummy SignInButton wrapper for clarity if not using Clerk's built-in one directly
 function SignInButton({
   children,
   mode,

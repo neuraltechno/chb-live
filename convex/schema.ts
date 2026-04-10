@@ -8,6 +8,9 @@ export default defineSchema({
     email: v.string(),
     image: v.optional(v.string()),
     bio: v.optional(v.string()),
+    role: v.optional(v.string()), // Support legacy singular string field
+    roles: v.optional(v.array(v.string())), // Support new array structure
+    badges: v.optional(v.array(v.string())),
     favoriteTeams: v.optional(
       v.array(
         v.object({

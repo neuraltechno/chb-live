@@ -6,6 +6,8 @@ interface ChatMessage {
   userId: string | null;
   username: string;
   userAvatar?: string;
+  userRole?: string;
+  userBadges?: string[];
   content: string;
   type: "text" | "reaction";
   replyTo?: {

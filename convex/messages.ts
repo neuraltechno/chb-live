@@ -86,7 +86,41 @@ export const list = query({
       .order("desc")
       .take(args.limit || 50);
 
-    return messages.filter(m => !m.isDeleted).reverse();
+    const filtered = messages.filter(m => !m.isDeleted).reverse();
+
+    // Fetch user details for each message to get roles/badges
+    const messagesWithUsers = await Promise.all(
+      filtered.map(async (m) => {
+        if (!m.userId) return { ...m, userRole: "user", userBadges: [] };
+        const user = await ctx.db.get(m.userId);
+        
+        let roleToUse = "user";
+        if (user) {
+          const u = user as any;
+          if (Array.isArray(u.roles)) {
+            if (u.roles.includes("admin")) roleToUse = "admin";
+            else if (u.roles.includes("moderator")) roleToUse = "moderator";
+            else if (u.roles.includes("winner")) roleToUse = "winner";
+          } 
+          if (roleToUse === "user" && typeof u.role === "string") {
+            const r = u.role.toLowerCase();
+            if (["admin", "moderator", "winner"].includes(r)) roleToUse = r;
+          }
+          if (roleToUse === "user" && typeof u.roles === "string") {
+            const r = u.roles.toLowerCase();
+            if (["admin", "moderator", "winner"].includes(r)) roleToUse = r;
+          }
+        }
+        
+        return {
+          ...m,
+          userRole: roleToUse,
+          userBadges: user?.badges || [],
+        };
+      })
+    );
+
+    return messagesWithUsers;
   },
 });
 
@@ -114,17 +148,46 @@ export const listForApi = query({
     // Reverse to get ascending order
     messages.reverse();
 
-    // Return minimal fields
-    return messages.map(m => ({
-      _id: m._id,
-      _creationTime: m._creationTime,
-      userId: m.userId,
-      username: m.username,
-      userAvatar: m.userAvatar,
-      content: m.content,
-      type: m.type,
-      replyTo: m.replyTo,
-    }));
+    // Fetch user details for each message
+    const messagesWithUsers = await Promise.all(
+      messages.map(async (m) => {
+        let userRole = "user";
+        let userBadges: string[] = [];
+        if (m.userId) {
+          const user = await ctx.db.get(m.userId);
+          
+          if (user) {
+            const u = user as any;
+            if (Array.isArray(u.roles)) {
+              if (u.roles.includes("admin")) userRole = "admin";
+              else if (u.roles.includes("moderator")) userRole = "moderator";
+              else if (u.roles.includes("winner")) userRole = "winner";
+            } else if (typeof u.role === "string") {
+              const r = u.role.toLowerCase();
+              if (["admin", "moderator", "winner"].includes(r)) userRole = r;
+            } else if (typeof u.roles === "string") {
+              const r = u.roles.toLowerCase();
+              if (["admin", "moderator", "winner"].includes(r)) userRole = r;
+            }
+            userBadges = u.badges || [];
+          }
+        }
+        return {
+          _id: m._id,
+          _creationTime: m._creationTime,
+          userId: m.userId,
+          username: m.username,
+          userAvatar: m.userAvatar,
+          content: m.content,
+          type: m.type,
+          replyTo: m.replyTo,
+          userRole,
+          userBadges,
+        };
+      })
+    );
+
+    return messagesWithUsers;
   },
 });
 

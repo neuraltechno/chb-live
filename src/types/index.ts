@@ -30,6 +30,8 @@ export interface UserPublic {
   username: string;
   avatar?: string;
   bio?: string;
+  role?: "admin" | "moderator" | "winner" | "user";
+  badges?: string[];
   favoriteTeams?: FavoriteTeam[];
 }
 
@@ -68,6 +70,8 @@ export interface Message {
   type: "text" | "reaction";
   replyTo?: ReplyInfo;
   createdAt: string;
+  userRole?: string;
+  userBadges?: string[];
 }
 
 export interface ChatRoom {
