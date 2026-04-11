@@ -36,7 +36,7 @@ export default function RootLayout({
       <body className="bg-dark-950 text-white">
         <ConvexClientProvider>
           <Navbar />
-          <main className="pt-20 min-h-screen">{children}</main>
+          <main className="pt-20">{children}</main>
           <Toaster
             position="top-right"
             toastOptions={{

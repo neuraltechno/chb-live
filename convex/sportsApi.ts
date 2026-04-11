@@ -457,8 +457,8 @@ export const fetchGameStats = action({
     const isFinished = game?.status === "finished";
 
     // For live games, don't return from Convex-based cache if it's too old
-    // We allow 60 seconds for live updates.
-    if (cached && !isFinished && Date.now() - (cached.lastFetched || 0) < 60_000) {
+    // We allow 10 seconds for live updates.
+    if (cached && !isFinished && Date.now() - (cached.lastFetched || 0) < 10_000) {
       return cached.stats;
     }
 

@@ -82,6 +82,10 @@ export async function GET(
         const side = team.homeAway === "home" ? homeStats : (team.homeAway === "away" ? awayStats : null);
         if (side) {
           side.teamId = String(team.team?.id || "");
+          // Capture the top level score from the team object if it exists
+          if (team.score) {
+            side.score = String(team.score);
+          }
           team.statistics?.forEach((stat: any) => {
             side[stat.name] = stat.displayValue;
           });
@@ -120,8 +124,8 @@ export async function GET(
           
           if (result && result.boxscore?.players) {
             scData = result.boxscore.players;
-            // Cache SC data for 60 seconds
-            gameCache.set(scCacheKey, scData, 60 * 1000);
+            // Cache SC data for 10 seconds
+            gameCache.set(scCacheKey, scData, 10 * 1000);
           }
         } catch (scError) {
           console.error('[Live API] Error fetching SC scores:', scError);
@@ -216,7 +220,8 @@ export async function GET(
     }
 
     // Store in cache
-    gameCache.set(cacheKey, transformedData);
+    // Reduced cache TTL for live games to 2 seconds to ensure final scores aren't held too long
+    gameCache.set(cacheKey, transformedData, 2000);
 
     // If game is finished, save to Convex to ensure final stats are persisted
     if (transformedData.statusDescription?.toLowerCase() === 'final' || 

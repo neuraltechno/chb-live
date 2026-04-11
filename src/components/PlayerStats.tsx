@@ -15,6 +15,8 @@ const PlayerStatsTable = lazy(() => Promise.resolve({ default: PlayerStatsTableC
 
 function TeamScoreAfl({ team, gameExternalId, leagueId, gameId, liveStats }: { team: any, gameExternalId: string, leagueId: string, gameId: string, liveStats?: any }) {
   const convexStatsRecord = useQuery(api.stats.getPlayerStats, { externalId: gameExternalId });
+  
+  // Prefer liveStats from the dedicated live API first
   const stats = liveStats || convexStatsRecord?.matchStats;
 
   if (!stats) return <span>{team.score}</span>;
@@ -23,8 +25,9 @@ function TeamScoreAfl({ team, gameExternalId, leagueId, gameId, liveStats }: { t
   const side = String(stats.home?.teamId) === String(team.id) ? 'home' : 'away';
   const goals = stats[side]?.goals || "0";
   const behinds = stats[side]?.behinds || "0";
+  const score = stats[side]?.score || team.score;
 
-  return <span>{goals}.{behinds}.{team.score}</span>;
+  return <span>{goals}.{behinds}.{score}</span>;
 }
 
 interface PlayerStatsProps {

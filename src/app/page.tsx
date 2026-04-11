@@ -74,7 +74,7 @@ export default function HomePage() {
   const filteredFinished = filterByTeam ? filterByTeam(finishedGames) : finishedGames;
 
   return (
-    <div className="min-h-screen bg-dark-950 bg-grid-pattern">
+    <div className="bg-dark-950 bg-grid-pattern">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-primary-950/20 via-transparent to-transparent" />

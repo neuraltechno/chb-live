@@ -53,13 +53,95 @@ export default function MatchPage() {
     game?.status === "live" || game?.status === "halftime" ? gameId : undefined
   );
   
+  // Update document title with live scores
+  useEffect(() => {
+    if (!game) return;
+
+    const updateTitle = () => {
+      const baseTitle = `${game.homeTeam.shortName} vs ${game.awayTeam.shortName} | Gamebloc`;
+      
+      // For live or finished games, show the scores in the title
+      if (game.status === "live" || game.status === "halftime" || game.status === "finished") {
+        // Initial values from the game record (Convex)
+        let homeScore = game.homeTeam.score || 0;
+        let awayScore = game.awayTeam.score || 0;
+
+        // Use liveStats scores if available
+        if (liveStats) {
+          const parseScore = (val: any) => {
+            if (typeof val === 'string') return parseInt(val, 10) || 0;
+            if (typeof val === 'number') return val;
+            return 0;
+          };
+
+          const liveHome = parseScore(liveStats.home?.score);
+          const liveAway = parseScore(liveStats.away?.score);
+
+          // For live games, we trust liveStats if it has any activity.
+          // For finished games, we take the HIGHER of the two sources to ensure late scores (like that final behind) are captured
+          // while the Convex record is still being finalized/cached.
+          if (game.status === "finished") {
+            homeScore = Math.max(homeScore, liveHome);
+            awayScore = Math.max(awayScore, liveAway);
+          } else if (liveHome > 0 || liveAway > 0) {
+            homeScore = liveHome;
+            awayScore = liveAway;
+          }
+        }
+
+        let statusSuffix = "";
+        if (game.status === "live" || game.status === "halftime") {
+          const liveStatus = renderStatus();
+          if (liveStatus) {
+            statusSuffix = ` | ${liveStatus}`;
+          }
+        } else if (game.status === "finished") {
+          statusSuffix = ` | Final`;
+        }
+
+        const newTitle = `${game.homeTeam.shortName} [${homeScore}] vs ${game.awayTeam.shortName} [${awayScore}]${statusSuffix}`;
+        if (document.title !== newTitle) {
+          document.title = newTitle;
+        }
+      } else {
+        if (document.title !== baseTitle) {
+          document.title = baseTitle;
+        }
+      }
+    };
+
+    updateTitle();
+    
+    // Add visibility change listener to ensure title is fresh when coming back
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        updateTitle();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.title = "Gamebloc";
+    };
+  }, [game, liveStats]);
+
   const isLoading = game === undefined;
 
   useEffect(() => {
     if (game) {
-      console.log(`[MatchPage Debug] Full Game Data:`, JSON.stringify(game, null, 2));
+      // console.log(`[MatchPage Debug] Full Game Data:`, JSON.stringify(game, null, 2));
     }
-  }, [game]);
+    if (liveStats) {
+      // console.log(`[MatchPage Debug] Live Stats updated:`, {
+      //   home: liveStats.home?.score,
+      //   away: liveStats.away?.score,
+      //   status: liveStats.sts,
+      //   timestamp: new Date().toLocaleTimeString()
+      // });
+    }
+  }, [game, liveStats]);
 
   if (isLoading) {
     return (
@@ -107,7 +189,7 @@ export default function MatchPage() {
   const statusText = detailStatus || renderStatus();
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col lg:flex-row bg-dark-950 overflow-hidden">
+    <div className="h-[calc(100vh-80px)] flex flex-col lg:flex-row bg-dark-950 overflow-hidden">
       {/* Column 1: Team Info & Team Stats (15%) */}
       <div className="lg:w-[15%] flex-shrink-0 bg-dark-900 border-r border-dark-700/50 flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b border-dark-700/50">

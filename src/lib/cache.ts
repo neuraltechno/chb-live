@@ -2,8 +2,8 @@ import { LRUCache } from 'lru-cache';
 
 const options = {
   max: 500,
-  // 15 seconds TTL
-  ttl: 1000 * 15,
+  // 5 seconds TTL
+  ttl: 1000 * 5,
   allowStale: false,
   updateAgeOnGet: false,
   updateAgeOnHas: false,
