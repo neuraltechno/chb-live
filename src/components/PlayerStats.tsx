@@ -19,13 +19,36 @@ function TeamScoreAfl({ team, gameExternalId, leagueId, gameId, liveStats }: { t
   // Prefer liveStats from the dedicated live API first
   const stats = liveStats || convexStatsRecord?.matchStats;
 
-  if (!stats) return <span>{team.score}</span>;
+  // Determine side before any early returns
+  const homeId = stats?.home?.teamId;
+  const awayId = stats?.away?.teamId;
+  const targetId = String(team.id);
+  
+  const isHome = homeId !== undefined && String(homeId) === targetId;
+  const isAway = awayId !== undefined && String(awayId) === targetId;
+  
+  // If IDs don't match, try to match by short name or name as a fallback
+  let side = isHome ? 'home' : (isAway ? 'away' : null);
+  
+  if (!side && stats) {
+    const homeName = stats.home?.name?.toLowerCase();
+    const awayName = stats.away?.name?.toLowerCase();
+    const teamName = team.name?.toLowerCase();
+    const teamShortName = team.shortName?.toLowerCase();
+    
+    if (homeName && (teamName?.includes(homeName) || homeName.includes(teamName || "") || teamShortName?.includes(homeName))) {
+      side = 'home';
+    } else if (awayName && (teamName?.includes(awayName) || awayName.includes(teamName || "") || teamShortName?.includes(awayName))) {
+      side = 'away';
+    }
+  }
 
-  // Use the team ID to find the correct side from the summary stats
-  const side = String(stats.home?.teamId) === String(team.id) ? 'home' : 'away';
-  const goals = stats[side]?.goals || "0";
-  const behinds = stats[side]?.behinds || "0";
-  const score = stats[side]?.score || team.score;
+  if (!stats || !side) return <span>{team.score}</span>;
+
+  const sideData = stats[side] || {};
+  const goals = sideData.goals || "0";
+  const behinds = sideData.behinds || "0";
+  const score = sideData.score || team.score;
 
   return <span>{goals}.{behinds}.{score}</span>;
 }

@@ -354,6 +354,18 @@ export default function MatchStats({ game, liveStats: passedLiveStats }: MatchSt
   
   const liveStats = passedLiveStats || polledLiveStats;
   const [rawStats, setRawStats] = useState<RawStats | null>(null);
+
+  useEffect(() => {
+    if (liveStats) {
+      console.log(`[MatchStats] Live stats received:`, {
+        hasHome: !!liveStats.home,
+        hasAway: !!liveStats.away,
+        homeKeys: liveStats.home ? Object.keys(liveStats.home) : [],
+        awayKeys: liveStats.away ? Object.keys(liveStats.away) : []
+      });
+    }
+  }, [liveStats]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});

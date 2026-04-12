@@ -19,28 +19,8 @@ import { api } from "../../../../convex/_generated/api";
 import { useEffect, useState } from "react";
 import { useGameLiveStats } from "@/hooks/use-game-live-stats";
 
-function TeamScoreAfl({ team, gameExternalId, leagueId, gameId, onStatusUpdate, liveStats }: { team: any, gameExternalId: string, leagueId: string, gameId: string, onStatusUpdate: (status: string) => void, liveStats?: any }) {
-  const convexStatsRecord = useQuery(api.stats.getPlayerStats, { externalId: gameExternalId });
-  const stats = liveStats || convexStatsRecord?.matchStats;
-
-  useEffect(() => {
-    if (stats?.sts && leagueId === "afl") {
-      const sts = stats.sts.toLowerCase();
-      if (sts.includes("end of") || sts === "halftime") {
-         onStatusUpdate(stats.sts);
-      }
-    }
-  }, [stats, leagueId, onStatusUpdate]);
-
-  if (!stats) return <span>{team.score}</span>;
-
-  // Find which side matches our passed team ID
-  const side = (stats.home?.teamId === String(team.id)) ? 'home' : 'away';
-  const goals = stats[side]?.goals || "0";
-  const behinds = stats[side]?.behinds || "0";
-
-  return <span>{goals}.{behinds}.{team.score}</span>;
-}
+// Remove local TeamScoreAfl to prevent hook mismatches and logic duplication
+// We use the one exported or handled within MatchStats/PlayerStats components
 
 export default function MatchPage() {
   const params = useParams();
@@ -203,18 +183,6 @@ export default function MatchPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {game.sport === "afl" && (
-            <div className="hidden">
-              <TeamScoreAfl 
-                team={game.homeTeam} 
-                gameExternalId={game.externalId} 
-                leagueId={game.league.id} 
-                gameId={game.id} 
-                onStatusUpdate={setDetailStatus}
-                liveStats={liveStats}
-              />
-            </div>
-          )}
           {game.sport === "afl" && (
             <MatchSupercoachLeaderboard
               externalMatchId={game.externalId}
