@@ -224,7 +224,7 @@ export default function PlayerStats({ game, liveStats: passedLiveStats }: Player
   }
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-4 pb-4">
       <Suspense fallback={<div className="flex items-center justify-center h-48"><Loader2 className="animate-spin" /></div>}>
         <PlayerStatsTable game={game} stats={stats} sortConfig={sortConfig} onSort={handleSort} scIncreases={scIncreases} liveStats={liveStatsRecord} />
       </Suspense>
@@ -256,7 +256,7 @@ function PlayerStatsTableContent({
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
       {stats.map((teamData: any, teamIdx: number) => {
         const teamName = teamData.team?.displayName || (teamIdx === 0 ? game.homeTeam.name : game.awayTeam.name);
         const teamLogo = teamData.team?.logo || (teamIdx === 0 ? game.homeTeam.logo : game.awayTeam.logo);
@@ -367,16 +367,16 @@ function PlayerStatsTableContent({
         if (players.length === 0) return null;
 
         return (
-          <div key={teamIdx} className="bg-dark-900/50 rounded-2xl border border-dark-700/50 overflow-hidden flex flex-col">
-            <div className="px-4 py-3 bg-dark-800/50 border-b border-dark-700/50 flex items-center gap-3">
+          <div key={teamIdx} className="bg-dark-900/50 rounded-xl border border-dark-700/50 overflow-hidden flex flex-col">
+            <div className="px-3 py-2 bg-dark-800/50 border-b border-dark-700/50 flex items-center gap-2">
               {teamLogo ? (
-                <img src={teamLogo} alt={teamName} className="w-6 h-6 object-contain" />
+                <img src={teamLogo} alt={teamName} className="w-5 h-5 object-contain" />
               ) : (
-                <Shield className="w-5 h-5 text-dark-500" />
+                <Shield className="w-4 h-4 text-dark-500" />
               )}
-              <h3 className="font-semibold text-white text-sm truncate flex items-center gap-2">
+              <h3 className="font-semibold text-white text-xs truncate flex items-center gap-2">
                 {teamName}
-                <span className="bg-dark-700/50 px-2 py-0.5 rounded text-primary-400 font-bold tabular-nums">
+                <span className="bg-dark-700/50 px-1.5 py-0.5 rounded text-primary-400 font-bold tabular-nums text-[11px]">
                   {game.sport === "afl" ? (
                     <TeamScoreAfl 
                       team={teamIdx === 0 ? game.homeTeam : game.awayTeam} 
@@ -393,12 +393,12 @@ function PlayerStatsTableContent({
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-[11px]">
                 <thead>
                   <tr className="border-b border-dark-700/30 text-dark-400 uppercase tracking-wider font-medium">
                       <th
                         className={cn(
-                          "px-2 py-2.5 min-w-[110px] cursor-pointer hover:text-white transition-colors group",
+                          "px-2 py-2 min-w-[100px] cursor-pointer hover:text-white transition-colors group",
                           sortConfig.key === 'name' && "text-white"
                         )}
                         onClick={() => onSort('name')}
@@ -418,7 +418,7 @@ function PlayerStatsTableContent({
                         <th
                           key={s.key}
                           className={cn(
-                            "px-0.5 py-2.5 text-center font-bold text-[13px] cursor-pointer hover:text-white transition-colors group",
+                            "px-0.5 py-2 text-center font-bold text-[11px] cursor-pointer hover:text-white transition-colors group",
                             sortConfig.key === s.key && "text-white"
                           )}
                           onClick={() => onSort(s.key)}
@@ -437,21 +437,21 @@ function PlayerStatsTableContent({
                       ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-dark-700/20">
+                <tbody className="divide-y divide-dark-700/10">
                   {sortedPlayers.map((player) => (
                     <tr key={player.id} className="hover:bg-dark-800/30 transition-colors">
-                      <td className="px-2 py-1.5">
+                      <td className="px-2 py-1">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded bg-dark-800 border border-dark-700/50 flex-shrink-0 flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-primary-400">
+                          <div className="w-4 h-4 rounded bg-dark-800 border border-dark-700/50 flex-shrink-0 flex items-center justify-center">
+                            <span className="text-[9px] font-bold text-primary-400">
                               {player.jersey || "-"}
                             </span>
                           </div>
-                          <span className="text-white font-medium truncate text-[14px] leading-none">{player.name}</span>
+                          <span className="text-white font-medium truncate text-[12px] leading-tight">{player.name}</span>
                         </div>
                       </td>
                       {displayStats.map(s => (
-                        <td key={s.key} className="relative px-0.5 py-1.5 text-center text-dark-200 tabular-nums text-[14px] leading-none">
+                        <td key={s.key} className="relative px-0.5 py-1 text-center text-dark-200 tabular-nums text-[12px] leading-tight">
                           <div className="flex items-center justify-center">
                             {getStatValue(player, s.key)}
                           </div>

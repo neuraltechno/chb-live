@@ -16,6 +16,8 @@ export function useGameLiveStats(gameId: string | undefined) {
       // Always revalidate even if data is cached
       revalidateOnMount: true,
       dedupingInterval: 2000,
+      // Ensure polling continues even when the window is in the background
+      refreshWhenHidden: true,
     }
   );
 

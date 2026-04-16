@@ -289,11 +289,11 @@ function StatBar({
   const awayLeads = stat.awayNum > stat.homeNum;
 
   return (
-    <div className="px-4 py-1.5">
-      <div className="flex items-center gap-3">
+    <div className="px-3 py-1">
+      <div className="flex items-center gap-2">
         <span
           className={cn(
-            "text-[12px] font-bold tabular-nums w-8 text-left",
+            "text-[10px] font-bold tabular-nums w-6 text-left",
             homeLeads ? "text-white" : "text-dark-400"
           )}
         >
@@ -301,10 +301,10 @@ function StatBar({
         </span>
 
         <div className="flex-1 flex flex-col gap-0.5">
-          <span className="text-[12px] font-medium text-dark-400 text-center truncate">
+          <span className="text-[10px] font-medium text-dark-400 text-center truncate">
             {stat.label}
           </span>
-          <div className="flex items-center gap-0.5 h-1">
+          <div className="flex items-center gap-0.5 h-0.5">
             <div className="flex-1 flex justify-end overflow-hidden rounded-l-full">
               <div
                 className={cn(
@@ -328,7 +328,7 @@ function StatBar({
 
         <span
           className={cn(
-            "text-[12px] font-bold tabular-nums w-8 text-right",
+            "text-[10px] font-bold tabular-nums w-6 text-right",
             awayLeads ? "text-white" : "text-dark-400"
           )}
         >
@@ -420,22 +420,22 @@ export default function MatchStats({ game, liveStats: passedLiveStats }: MatchSt
 
   if (isLoading) {
     return (
-      <div className="border-t border-dark-700/50 px-6 py-6 flex items-center gap-3">
-        <BarChart2 className="w-4 h-4 text-dark-500" />
-        <span className="text-xs text-dark-500 uppercase tracking-wider font-semibold">Match Statistics</span>
-        <Loader2 className="w-3.5 h-3.5 text-dark-600 animate-spin ml-auto" />
+      <div className="border-t border-dark-700/50 px-4 py-4 flex items-center gap-2">
+        <BarChart2 className="w-3.5 h-3.5 text-dark-500" />
+        <span className="text-[10px] text-dark-500 uppercase tracking-wider font-semibold">Match Statistics</span>
+        <Loader2 className="w-3 h-3 text-dark-600 animate-spin ml-auto" />
       </div>
     );
   }
 
   if (!isMatchActive) {
     return (
-      <div className="border-t border-dark-700/50 px-6 py-5">
-        <div className="flex items-center gap-2 mb-3">
-          <BarChart2 className="w-4 h-4 text-dark-500" />
-          <h3 className="text-xs font-semibold text-dark-400 uppercase tracking-wider">Match Statistics</h3>
+      <div className="border-t border-dark-700/50 px-4 py-3">
+        <div className="flex items-center gap-2 mb-2">
+          <BarChart2 className="w-3.5 h-3.5 text-dark-500" />
+          <h3 className="text-[10px] font-semibold text-dark-400 uppercase tracking-wider">Match Statistics</h3>
         </div>
-        <p className="text-xs text-dark-500 text-center py-3">Stats will be available once the match begins.</p>
+        <p className="text-[10px] text-dark-500 text-center py-2">Stats will be available once the match begins.</p>
       </div>
     );
   }
@@ -457,32 +457,32 @@ export default function MatchStats({ game, liveStats: passedLiveStats }: MatchSt
 
   return (
     <div className="border-t border-dark-700/50">
-      <div className="px-6 pt-5 pb-3 flex items-center gap-2">
-        <BarChart2 className="w-4 h-4 text-primary-500" />
-        <h3 className="text-xs font-semibold text-dark-300 uppercase tracking-wider">Match Statistics</h3>
+      <div className="px-4 pt-3 pb-2 flex items-center gap-1.5">
+        <BarChart2 className="w-3.5 h-3.5 text-primary-500" />
+        <h3 className="text-[10px] font-semibold text-dark-300 uppercase tracking-wider">Match Statistics</h3>
       </div>
 
-      <div className="px-4 pb-5 space-y-3">
+      <div className="px-3 pb-4 space-y-2">
         {hasPossession && (
-          <div className="bg-dark-800/60 rounded-xl border border-dark-700/30 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0" />
-                <span className="text-base font-bold text-white tabular-nums">{homePosRaw ?? "0"}%</span>
+          <div className="bg-dark-800/60 rounded-lg border border-dark-700/30 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />
+                <span className="text-sm font-bold text-white tabular-nums">{homePosRaw ?? "0"}%</span>
               </div>
-              <span className="text-[11px] font-semibold text-dark-400 uppercase tracking-wider">Possession</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-bold text-white tabular-nums">{awayPosRaw ?? "0"}%</span>
-                <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+              <span className="text-[9px] font-semibold text-dark-400 uppercase tracking-wider">Possession</span>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-bold text-white tabular-nums">{awayPosRaw ?? "0"}%</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
               </div>
             </div>
-            <div className="flex h-2.5 rounded-full overflow-hidden gap-px">
+            <div className="flex h-2 rounded-full overflow-hidden gap-px">
               <div className={cn("bg-primary-500 transition-all duration-700 ease-out")} style={{ width: `${homePos}%` }} />
               <div className={cn("bg-amber-500 transition-all duration-700 ease-out")} style={{ width: `${awayPos}%` }} />
             </div>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-[11px] text-dark-500 truncate">{game.homeTeam.shortName}</span>
-              <span className="text-[11px] text-dark-500 truncate">{game.awayTeam.shortName}</span>
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-[9px] text-dark-500 truncate">{game.homeTeam.shortName}</span>
+              <span className="text-[9px] text-dark-500 truncate">{game.awayTeam.shortName}</span>
             </div>
           </div>
         )}
@@ -490,22 +490,22 @@ export default function MatchStats({ game, liveStats: passedLiveStats }: MatchSt
         {groups.map((group) => {
           const isExpanded = expandedGroups[group.name] || false;
           return (
-            <div key={group.name} className="bg-dark-800/60 rounded-xl border border-dark-700/30 overflow-hidden">
+            <div key={group.name} className="bg-dark-800/60 rounded-lg border border-dark-700/30 overflow-hidden">
               <button
                 onClick={() => toggleGroup(group.name)}
-                className="w-full px-4 py-2.5 border-b border-dark-700/30 flex items-center justify-between hover:bg-dark-700/30 transition-colors"
+                className="w-full px-3 py-2 border-b border-dark-700/30 flex items-center justify-between hover:bg-dark-700/30 transition-colors"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   {isExpanded ? (
-                    <Minus className="w-3 h-3 text-dark-500" />
+                    <Minus className="w-2.5 h-2.5 text-dark-500" />
                   ) : (
-                    <Plus className="w-3 h-3 text-dark-500" />
+                    <Plus className="w-2.5 h-2.5 text-dark-500" />
                   )}
-                  <span className="text-[10px] font-bold text-dark-400 uppercase tracking-widest">{group.name}</span>
+                  <span className="text-[9px] font-bold text-dark-400 uppercase tracking-widest">{group.name}</span>
                 </div>
               </button>
               {isExpanded && (
-                <div className="divide-y divide-dark-700/20">
+                <div className="divide-y divide-dark-700/10">
                   {group.stats.map((stat) => (
                     <StatBar key={stat.label} stat={stat} homeColor={homeColor} awayColor={awayColor} />
                   ))}

@@ -34,21 +34,21 @@ export default function MatchSupercoachLeaderboard({
     <div className="border-t border-dark-700/50">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 pt-5 pb-3 flex items-center justify-between hover:bg-dark-700/20 transition-colors group"
+        className="w-full px-4 pt-3 pb-2 flex items-center justify-between hover:bg-dark-700/20 transition-colors group"
       >
-        <div className="flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-amber-500" />
-          <h3 className="text-xs font-semibold text-dark-300 uppercase tracking-wider">
+        <div className="flex items-center gap-1.5">
+          <Trophy className="w-3.5 h-3.5 text-amber-500" />
+          <h3 className="text-[10px] font-semibold text-dark-300 uppercase tracking-wider">
             Supercoach Top 10
           </h3>
         </div>
         <div className="text-dark-500 group-hover:text-dark-300 transition-colors">
-          {isExpanded ? <Minus className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+          {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
         </div>
       </button>
 
       {isExpanded && (
-        <div className="px-4 pb-5 space-y-2">
+        <div className="px-3 pb-3 space-y-1.5">
           <AnimatePresence mode="popLayout">
             {scores.map((player, index) => {
               const teamLogo = getTeamLogo(player.teamId);
@@ -65,18 +65,18 @@ export default function MatchSupercoachLeaderboard({
                     damping: 30,
                     mass: 1,
                   }}
-                  className="bg-dark-800/40 rounded-xl border border-dark-700/30 p-2 flex items-center gap-3 group/item hover:bg-dark-700/40 transition-colors"
+                  className="bg-dark-800/40 rounded-lg border border-dark-700/30 p-1.5 flex items-center gap-2 group/item hover:bg-dark-700/40 transition-colors"
                 >
                   {/* Rank */}
-                  <div className="w-5 text-center">
-                    <span className="text-[10px] font-bold text-dark-500">
+                  <div className="w-4 text-center">
+                    <span className="text-[9px] font-bold text-dark-500">
                       {index + 1}
                     </span>
                   </div>
 
                   {/* Player Image */}
                   <div className="relative flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-dark-700 overflow-hidden border border-dark-600/50 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-dark-700 overflow-hidden border border-dark-600/50 flex-shrink-0">
                       {player.playerImage ? (
                         <img
                           src={player.playerImage}
@@ -85,12 +85,12 @@ export default function MatchSupercoachLeaderboard({
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-dark-500" />
+                          <User className="w-4 h-4 text-dark-500" />
                         </div>
                       )}
                     </div>
                     {/* Team Logo Overlay */}
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-dark-900 border border-dark-700 p-0.5 shadow-lg">
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-dark-900 border border-dark-700 p-0.5 shadow-lg">
                       <img
                         src={teamLogo}
                         alt={player.teamName}
@@ -101,20 +101,20 @@ export default function MatchSupercoachLeaderboard({
 
                   {/* Player Name */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-bold text-white truncate">
+                    <p className="text-[11px] font-bold text-white truncate leading-tight">
                       {player.playerName}
                     </p>
-                    <p className="text-[10px] text-dark-400 font-medium truncate">
+                    <p className="text-[9px] text-dark-400 font-medium truncate leading-tight">
                       {player.teamName}
                     </p>
                   </div>
 
                   {/* Score */}
                   <div className="text-right flex-shrink-0">
-                    <div className="text-sm font-black text-primary-400 tabular-nums">
+                    <div className="text-[12px] font-black text-primary-400 tabular-nums leading-tight">
                       {player.score}
                     </div>
-                    <div className="text-[9px] text-dark-500 font-bold uppercase tracking-tighter">
+                    <div className="text-[8px] text-dark-500 font-bold uppercase tracking-tighter leading-none">
                       PTS
                     </div>
                   </div>

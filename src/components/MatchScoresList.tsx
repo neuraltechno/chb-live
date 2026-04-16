@@ -144,26 +144,26 @@ export default function MatchScoresList({ gameId, game, liveStats }: MatchScores
                   onClick={() => togglePeriod(p)}
                   className="flex flex-col w-full bg-dark-800/60 hover:bg-dark-700/60 transition-colors border-y border-dark-700/30 sticky top-0 z-20 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between px-4 py-2 w-full">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between px-3 py-1.5 w-full">
+                    <div className="flex items-center gap-1.5">
                       {expandedPeriods[p] ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-dark-400" />
+                        <ChevronDown className="w-3 h-3 text-dark-400" />
                       ) : (
-                        <ChevronRight className="w-3.5 h-3.5 text-dark-400" />
+                        <ChevronRight className="w-3 h-3 text-dark-400" />
                       )}
-                      <span className="text-[11px] font-bold text-white uppercase tracking-widest">
+                      <span className="text-[10px] font-bold text-white uppercase tracking-widest">
                         Quarter {p}
                       </span>
                     </div>
                     
                     {lastScore && (
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex items-center gap-1 bg-dark-900/50 px-2 py-0.5 rounded border border-dark-700/50">
-                          <span className="text-[10px] font-bold text-primary-400 tabular-nums">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-dark-900/50 px-1.5 py-0.5 rounded border border-dark-700/50">
+                          <span className="text-[9px] font-bold text-primary-400 tabular-nums">
                             {lastScore.home}
                           </span>
-                          <span className="text-[8px] text-dark-500 font-bold">•</span>
-                          <span className="text-[10px] font-bold text-dark-300 tabular-nums">
+                          <span className="text-[7px] text-dark-500 font-bold">•</span>
+                          <span className="text-[9px] font-bold text-dark-300 tabular-nums">
                             {lastScore.away}
                           </span>
                         </div>
@@ -173,9 +173,9 @@ export default function MatchScoresList({ gameId, game, liveStats }: MatchScores
 
                   {/* Tiny Worm Graph - Compact Visual representation of score momentum */}
                   {periodWormData.length > 1 && (
-                    <div className="h-[30px] w-full relative px-4 flex items-center justify-center bg-dark-900/30 overflow-hidden">
+                    <div className="h-[20px] w-full relative px-3 flex items-center justify-center bg-dark-900/30 overflow-hidden">
                       {/* Zero line */}
-                      <div className="absolute inset-x-4 h-[1px] bg-dark-700/50 top-1/2 -translate-y-1/2 z-0" />
+                      <div className="absolute inset-x-3 h-[1px] bg-dark-700/50 top-1/2 -translate-y-1/2 z-0" />
                       
                       <svg className="w-full h-full relative z-10 overflow-visible" preserveAspectRatio="none" viewBox={`0 -${maxDiffOverall} 100 ${maxDiffOverall * 2}`}>
                         {/* Area Fill */}
@@ -214,33 +214,33 @@ export default function MatchScoresList({ gameId, game, liveStats }: MatchScores
                       const isGoal = score.type === "goal";
                       
                       return (
-                        <div key={score.id} className="px-4 py-2.5 hover:bg-dark-800/40 transition-colors animate-fade-in">
-                          <div className="flex items-start gap-3">
+                        <div key={score.id} className="px-3 py-1.5 hover:bg-dark-800/40 transition-colors animate-fade-in">
+                          <div className="flex items-start gap-2">
                             <div className={cn(
-                              "mt-1 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center",
-                              isGoal ? "bg-accent-green/10 text-accent-green" : "bg-accent-yellow/10 text-accent-yellow font-bold text-[10px]"
+                              "mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center",
+                              isGoal ? "bg-accent-green/10 text-accent-green" : "bg-accent-yellow/10 text-accent-yellow font-bold text-[9px]"
                             )}>
-                              {isGoal ? <Goal className="w-3.5 h-3.5" /> : "1"}
+                              {isGoal ? <Goal className="w-3 h-3" /> : "1"}
                             </div>
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-0.5">
-                                <div className="flex items-center gap-1.5 overflow-hidden">
-                                  <span className="text-[10px] font-bold text-dark-400 uppercase tracking-wider whitespace-nowrap">
+                                <div className="flex items-center gap-1 overflow-hidden">
+                                  <span className="text-[9px] font-bold text-dark-400 uppercase tracking-wider whitespace-nowrap">
                                     {score.clk}
                                   </span>
                                   {score.tName && (
-                                    <span className="text-[9px] font-semibold text-dark-500 uppercase tracking-tight truncate">
+                                    <span className="text-[8px] font-semibold text-dark-500 uppercase tracking-tight truncate">
                                       {score.tName}
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-[10px] font-medium text-dark-500 tabular-nums">
+                                <span className="text-[9px] font-medium text-dark-500 tabular-nums">
                                   {score.home} - {score.away}
                                 </span>
                               </div>
                               
-                              <p className="text-xs text-dark-100 font-medium leading-relaxed">
+                              <p className="text-[11px] text-dark-100 font-medium leading-tight">
                                 <span className={cn(isHome ? "text-primary-400" : "text-dark-300")}>
                                   {score.pName || score.pShort || (score.text?.toLowerCase().includes("rushed") ? "Rushed" : "Unknown")}
                                 </span>
