@@ -216,7 +216,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto py-2 space-y-0.5 scrollbar-thin"
+        className="flex-1 overflow-y-auto py-2 space-y-0.5 scrollbar-thin custom-scrollbar"
       >
         {isLoadingMessages ? (
           <div className="flex items-center justify-center py-10">

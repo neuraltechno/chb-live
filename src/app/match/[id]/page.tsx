@@ -8,6 +8,8 @@ import {
   MapPin,
   Calendar,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import MatchStats from "@/components/MatchStats";
@@ -18,6 +20,7 @@ import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useEffect, useState } from "react";
 import { useGameLiveStats } from "@/hooks/use-game-live-stats";
+import { cn } from "@/lib/utils";
 
 // Remove local TeamScoreAfl to prevent hook mismatches and logic duplication
 // We use the one exported or handled within MatchStats/PlayerStats components
@@ -27,6 +30,10 @@ export default function MatchPage() {
   const router = useRouter();
   const gameId = params.id as string;
   const [detailStatus, setDetailStatus] = useState<string | null>(null);
+  
+  // Collapse/Expand state for right column
+  const [chatExpanded, setChatExpanded] = useState(true);
+  const [scoresExpanded, setScoresExpanded] = useState(true);
 
   const game = useQuery(api.games.get, { id: gameId });
   const { stats: liveStats } = useGameLiveStats(
@@ -244,28 +251,60 @@ export default function MatchPage() {
       {/* Column 3: Chat & Scores (15%) */}
       <div className="lg:w-[15%] flex-shrink-0 bg-dark-900 border-l border-dark-700/50 flex flex-col h-full overflow-hidden relative">
         {/* Chat Section */}
-        <div className="flex-[0.6] min-h-0 flex flex-col overflow-hidden border-b border-dark-700/50">
+        <div className={cn(
+          "min-h-0 flex flex-col overflow-hidden border-b border-dark-700/50 transition-all duration-300 ease-in-out",
+          chatExpanded && scoresExpanded ? "flex-[0.6]" : 
+          chatExpanded ? "flex-1" : "h-10 flex-none"
+        )}>
           <div className="px-3 py-2 border-b border-dark-700/50 bg-dark-900/80 backdrop-blur-sm z-10 flex items-center justify-between">
             <h3 className="text-[12px] font-bold text-white flex items-center gap-2">
               Match Chat
               <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>
             </h3>
+            <button
+              onClick={() => setChatExpanded(!chatExpanded)}
+              className="p-1 hover:bg-dark-700 rounded transition-colors"
+            >
+              {chatExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5 text-dark-400" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-dark-400" />
+              )}
+            </button>
           </div>
-          <div className="flex-1 relative overflow-hidden">
-            <ChatWindow gameId={gameId} game={game} />
-          </div>
+          {chatExpanded && (
+            <div className="flex-1 relative overflow-hidden">
+              <ChatWindow gameId={gameId} game={game} />
+            </div>
+          )}
         </div>
 
         {/* Scores Section */}
-        <div className="flex-[0.4] min-h-0 flex flex-col overflow-hidden bg-dark-950/20">
-          <div className="px-3 py-2 border-b border-dark-700/50 bg-dark-900/80 backdrop-blur-sm z-10">
+        <div className={cn(
+          "min-h-0 flex flex-col overflow-hidden bg-dark-950/20 transition-all duration-300 ease-in-out",
+          scoresExpanded && chatExpanded ? "flex-[0.4]" : 
+          scoresExpanded ? "flex-1" : "h-10 flex-none"
+        )}>
+          <div className="px-3 py-2 border-b border-dark-700/50 bg-dark-900/80 backdrop-blur-sm z-10 flex items-center justify-between">
             <h3 className="text-[10px] font-bold text-dark-300 uppercase tracking-widest flex items-center gap-2">
               Scoring Plays
             </h3>
+            <button
+              onClick={() => setScoresExpanded(!scoresExpanded)}
+              className="p-1 hover:bg-dark-700 rounded transition-colors"
+            >
+              {scoresExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5 text-dark-400" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-dark-400" />
+              )}
+            </button>
           </div>
-          <div className="flex-1 relative overflow-hidden">
-            <MatchScoresList gameId={gameId} game={game} liveStats={liveStats} />
-          </div>
+          {scoresExpanded && (
+            <div className="flex-1 relative overflow-hidden">
+              <MatchScoresList gameId={gameId} game={game} liveStats={liveStats} />
+            </div>
+          )}
         </div>
       </div>
     </div>
