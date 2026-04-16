@@ -6,6 +6,7 @@ import { ScrollText, Goal, ChevronDown, ChevronRight } from "lucide-react";
 import { Game } from "@/types";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useGameLiveStats } from "@/hooks/use-game-live-stats";
 
 interface MatchScoresListProps {
   gameId: string;
@@ -20,13 +21,17 @@ export default function MatchScoresList({ gameId, game, liveStats }: MatchScores
   
   const statsRecord = useQuery(api.stats.getPlayerStats, { externalId: game.externalId });
 
-  // Update from liveStats if available (passed from parent or polling)
+  // Poll for updates even if the game is finished, to catch late-finalized scoring plays
+  const { stats: polledLiveStats } = useGameLiveStats(game.id);
+
+  // Update from liveStats (passed from parent) or polledLiveStats
   useEffect(() => {
-    if (liveStats?.scoringPlays) {
-      setScores(liveStats.scoringPlays);
+    const activeStats = liveStats || polledLiveStats;
+    if (activeStats?.scoringPlays) {
+      setScores(activeStats.scoringPlays);
       // If we don't have any periods expanded yet, expand them all
       if (Object.keys(expandedPeriods).length === 0) {
-        const periods = [...new Set(liveStats.scoringPlays.map((s: any) => s.p))];
+        const periods = [...new Set(activeStats.scoringPlays.map((s: any) => s.p))];
         const initialExpanded: Record<number, boolean> = {};
         periods.forEach((p: any) => {
           initialExpanded[p] = true;
@@ -34,7 +39,7 @@ export default function MatchScoresList({ gameId, game, liveStats }: MatchScores
         setExpandedPeriods(initialExpanded);
       }
     }
-  }, [liveStats]);
+  }, [liveStats, polledLiveStats]);
 
   // The initial fetch is still useful for immediate data if Convex cache is empty,
   // but real-time updates now come from the liveStats prop (which polls the API)
@@ -112,6 +117,15 @@ export default function MatchScoresList({ gameId, game, liveStats }: MatchScores
   const periods = Object.keys(scoresByPeriod)
     .map(Number)
     .sort((a, b) => a - b);
+
+  // Check for discrepancy between the last play score and the actual game score
+  const lastPlay = scores.length > 0 ? [...scores].sort((a, b) => Number(a.seq) - Number(b.seq))[scores.length - 1] : null;
+  const gameHomeScore = Number(liveStats?.home?.score || game.homeTeam.score || 0);
+  const gameAwayScore = Number(liveStats?.away?.score || game.awayTeam.score || 0);
+  
+  const homeDiff = gameHomeScore - Number(lastPlay?.home || 0);
+  const awayDiff = gameAwayScore - Number(lastPlay?.away || 0);
+  const hasDiscrepancy = (homeDiff > 0 || awayDiff > 0) && (game.status === "finished" || (liveStats?.statusDescription?.toLowerCase() === "final"));
 
   // Helper to get last score of a period
   const getPeriodEndScore = (p: number) => {
@@ -254,6 +268,30 @@ export default function MatchScoresList({ gameId, game, liveStats }: MatchScores
                         </div>
                       );
                     })}
+                    
+                    {/* Synthetic Final Score Play (if discrepancy found and this is the last period) */}
+                    {hasDiscrepancy && p === Math.max(...periods) && (
+                      <div className="px-3 py-2 bg-primary-500/5 border-l-2 border-primary-500">
+                        <div className="flex items-start gap-2">
+                          <div className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-primary-500/20 text-primary-400 flex items-center justify-center font-bold text-[9px]">
+                            +{(homeDiff || awayDiff)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                              <span className="text-[9px] font-bold text-primary-400 uppercase tracking-wider">
+                                Post-Siren
+                              </span>
+                              <span className="text-[9px] font-bold text-primary-400 tabular-nums">
+                                {gameHomeScore} - {gameAwayScore}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-dark-200 font-medium italic">
+                              Final score adjustment (Play not yet in official feed)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

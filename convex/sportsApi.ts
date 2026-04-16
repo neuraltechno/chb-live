@@ -515,15 +515,23 @@ export const fetchGameStats = action({
             scoringPlays = plays
               .filter((play: any) => {
                 const type = play.type?.type?.toLowerCase();
-                const text = play.type?.text?.toLowerCase();
-                return type === "goal" || type === "behind" || type === "rushed" || text === "rushed";
+                const text = play.text?.toLowerCase();
+                const typeText = play.type?.text?.toLowerCase();
+                return (
+                  type === "goal" || 
+                  type === "behind" || 
+                  type === "rushed" || 
+                  typeText === "rushed" || 
+                  text?.includes("rushed")
+                );
               })
               .map((play: any) => {
                 const participant = play.participants?.[0]?.athlete;
                 const type = play.type?.type?.toLowerCase();
-                const text = play.type?.text?.toLowerCase();
+                const text = play.text?.toLowerCase();
+                const typeText = play.type?.text?.toLowerCase();
                 // Treat 'rushed' as a 'behind' for AFL logic
-                const resolvedType = (type === "rushed" || text === "rushed") ? "behind" : type;
+                const resolvedType = (type === "rushed" || typeText === "rushed" || text?.includes("rushed")) ? "behind" : type;
                 
                 return {
                   id: String(play.id),
