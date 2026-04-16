@@ -65,121 +65,83 @@ export default function ChatMessage({ message, isOwnMessage, onClickAvatar, onRe
   return (
     <div
       className={cn(
-        "group flex gap-2 animate-slide-up",
-        isOwnMessage && "flex-row-reverse",
-        isMatchBot && "justify-center w-full my-1"
+        "group flex flex-col gap-0.5 animate-slide-up px-2 py-0.5 hover:bg-dark-800/30 transition-colors",
+        isMatchBot && "items-center my-1"
       )}
     >
-      {/* Avatar */}
-      {!isMatchBot && (
-        <button
-          onClick={handleAvatarClick}
-          className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity mt-0.5"
-        >
-          {message.user.avatar ? (
-            <img
-              src={message.user.avatar}
-              alt={message.user.username}
-              className="w-7 h-7 rounded-full"
-            />
-          ) : (
-            <div className="w-7 h-7 rounded-full bg-primary-600/30 flex items-center justify-center">
-              <span className="text-[10px] font-bold text-primary-300">
-                {message.user.username.charAt(0).toUpperCase()}
-              </span>
-            </div>
+      {/* Reply preview */}
+      {message.replyTo && (
+        <div
+          className={cn(
+            "flex items-center gap-2 mb-0.5 px-2 py-0.5 rounded bg-dark-800/50 border-l-2 border-primary-500/40 max-w-[90%] text-[10px]",
+            isOwnMessage ? "self-end" : "self-start"
           )}
-        </button>
+        >
+          <Reply className="w-2.5 h-2.5 text-dark-500" />
+          <span className="font-semibold text-primary-400/80 truncate">
+            {message.replyTo.username}:
+          </span>
+          <span className="text-dark-400 truncate leading-tight">
+            {message.replyTo.content}
+          </span>
+        </div>
       )}
 
-      {/* Message Bubble */}
-      <div
-        className={cn(
-          isMatchBot ? "max-w-[90%]" : "max-w-[85%]",
-          isOwnMessage ? "items-end" : "items-start",
-          isMatchBot && "items-center text-center"
-        )}
-      >
-        {/* Username */}
+      <div className={cn(
+        "flex items-baseline gap-2 w-full",
+        isMatchBot && "justify-center"
+      )}>
+        {/* Time */}
         {!isMatchBot && (
-          <button
-            onClick={handleAvatarClick}
-            className={cn(
-              "text-[10px] font-medium mb-0 px-1 hover:opacity-80 transition-opacity cursor-pointer text-left leading-none flex items-center gap-1",
-              currentStyle ? currentStyle.nameClass : "text-dark-400 hover:text-primary-400"
-            )}
-          >
-            {message.user.username}
-            {currentStyle?.badgeIcon && (
-              <currentStyle.badgeIcon className={cn("w-2.5 h-2.5", currentStyle.badgeColor)} />
-            )}
-            {message.user.badges?.includes("early_adopter") && (
-              <Star className="w-2.5 h-2.5 text-purple-400" fill="currentColor" />
-            )}
-          </button>
+          <span className="text-[10px] text-dark-500 tabular-nums flex-shrink-0 w-8">
+            {time}
+          </span>
         )}
 
-        {/* Reply preview */}
-        {message.replyTo && (
-          <div
-            className={cn(
-              "flex items-start gap-1 mb-0.5 px-2 py-1 rounded-lg border-l-2 border-primary-500/60 bg-dark-700/40 max-w-full",
-              isOwnMessage && "ml-auto"
-            )}
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] font-semibold text-primary-400 truncate leading-none">
-                {message.replyTo.username}
-              </p>
-              <p className="text-[10px] text-dark-400 truncate leading-tight mt-0.5">
-                {message.replyTo.content}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-1 group">
-          {isOwnMessage && onReply && (
+        {/* Username & Message Content */}
+        <div className={cn(
+          "flex flex-wrap items-baseline gap-x-1.5 min-w-0 flex-1",
+          isMatchBot && "justify-center"
+        )}>
+          {!isMatchBot && (
             <button
-              onClick={() => onReply(message)}
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-dark-500 hover:text-primary-400 hover:bg-dark-700/50 transition-all"
-              title="Reply"
+              onClick={handleAvatarClick}
+              className={cn(
+                "text-xs font-bold hover:underline transition-opacity cursor-pointer flex items-center gap-1 flex-shrink-0",
+                currentStyle ? currentStyle.nameClass : "text-primary-400"
+              )}
             >
-              <Reply className="w-3 h-3" />
+              {message.user.username}
+              {currentStyle?.badgeIcon && (
+                <currentStyle.badgeIcon className={cn("w-2.5 h-2.5", currentStyle.badgeColor)} />
+              )}
+              {message.user.badges?.includes("early_adopter") && (
+                <Star className="w-2.5 h-2.5 text-purple-400" fill="currentColor" />
+              )}
+              <span className="text-dark-500 font-normal">:</span>
             </button>
           )}
+
           <div
             className={cn(
-              "px-2.5 py-1.5 rounded-xl text-[13px] leading-snug break-words",
-              isOwnMessage
-                ? "bg-primary-600 text-white rounded-br-sm"
-                : isMatchBot
-                ? "bg-accent-blue/10 border border-accent-blue/30 text-accent-blue-light italic text-xs"
-                : cn("bg-dark-700/80 text-dark-100 rounded-bl-sm", currentStyle?.bubbleClass)
+              "text-[13px] leading-relaxed break-words text-dark-100",
+              isMatchBot && "bg-accent-blue/10 border border-accent-blue/30 text-accent-blue-light italic text-xs px-3 py-1 rounded-full",
+              isOwnMessage && !isMatchBot && "text-white"
             )}
           >
             {message.content}
           </div>
-          {!isOwnMessage && onReply && !isMatchBot && (
+
+          {onReply && !isMatchBot && (
             <button
               onClick={() => onReply(message)}
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-dark-500 hover:text-primary-400 hover:bg-dark-700/50 transition-all"
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-dark-500 hover:text-primary-400 transition-all inline-flex items-center"
               title="Reply"
             >
               <Reply className="w-3 h-3" />
             </button>
           )}
         </div>
-        {!isMatchBot && (
-          <p
-            className={cn(
-              "text-[9px] text-dark-500 mt-0 px-1 leading-none",
-              isOwnMessage ? "text-right" : "text-left"
-            )}
-          >
-            {time}
-          </p>
-        )}
       </div>
     </div>
   );

@@ -123,6 +123,13 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
       : undefined;
 
     try {
+      // Optimistically clear input
+      if (!overrideContent) {
+        setInputValue("");
+        setReplyingTo(null);
+        updatePresence({ gameId, isTyping: false });
+      }
+
       await sendMessageMutation({
         gameId,
         content: contentToSend,
@@ -131,9 +138,6 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
       });
 
       if (!overrideContent) {
-        setInputValue("");
-        setReplyingTo(null);
-        updatePresence({ gameId, isTyping: false });
         inputRef.current?.focus();
       }
       
@@ -143,6 +147,11 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
       }
     } catch (error: any) {
       console.error("Failed to send message:", error);
+      // Restore input if send failed (optional, but good for UX)
+      if (!overrideContent) {
+        setInputValue(contentToSend);
+      }
+      
       // Handle slow mode error message
       if (error.message?.includes("Slow mode")) {
         const match = error.message.match(/Wait (\d+)s/);
@@ -207,7 +216,7 @@ export default function ChatWindow({ gameId, game }: ChatWindowProps) {
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 py-2 space-y-1.5 scrollbar-thin"
+        className="flex-1 overflow-y-auto py-2 space-y-0.5 scrollbar-thin"
       >
         {isLoadingMessages ? (
           <div className="flex items-center justify-center py-10">
