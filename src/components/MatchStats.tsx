@@ -171,7 +171,6 @@ const AFL_GROUPS: GroupDef[] = [
       { key: "goals", label: "Goals" },
       { key: "behinds", label: "Behinds" },
       { key: "score", label: "Total Points" },
-      { key: "goalAccuracy", label: "Goal Accuracy" },
       { key: "goalAssists", label: "Goal Assists" },
       { key: "inside50s", label: "Inside 50s" },
       { key: "marksInside50", label: "Marks Inside 50" },
@@ -183,8 +182,6 @@ const AFL_GROUPS: GroupDef[] = [
       { key: "centreClearances", label: "Centre Clearances" },
       { key: "stoppageClearances", label: "Stoppage Clearances" },
       { key: "totalClearances", label: "Total Clearances" },
-      { key: "contestedMarks", label: "Contested Marks" },
-      { key: "uncontestedMarks", label: "Uncontested Marks" },
       { key: "contestedPossessions", label: "Contested Possessions" },
       { key: "uncontestedPossessions", label: "Uncontested Possessions" },
       { key: "hitouts", label: "Hitouts" },
@@ -198,9 +195,9 @@ const AFL_GROUPS: GroupDef[] = [
       { key: "disposals", label: "Disposals" },
       { key: "disposalEfficiency", label: "Disposal Efficiency" },
       { key: "marks", label: "Marks" },
+      { key: "uncontestedMarks", label: "Uncontested Marks" },
+      { key: "contestedMarks", label: "Contested Marks" },
       { key: "bounces", label: "Bounces" },
-      
-      
     ],
   },
   {
@@ -210,6 +207,7 @@ const AFL_GROUPS: GroupDef[] = [
       { key: "tacklesInside50", label: "Tackles Inside 50" },
       { key: "onePercenters", label: "One Percenters" },
       { key: "rebound50s", label: "Rebound 50s" },
+      { key: "interceptions", label: "Interceptions" },
     ],
   },
   {
@@ -252,23 +250,41 @@ function parseNum(val: string | undefined): number {
 
 function buildGroups(raw: RawStats, sport: SportType): StatGroup[] {
   const groupDefs = SPORT_GROUPS[sport] ?? SOCCER_GROUPS;
-  return groupDefs
+  const groups = groupDefs
     .map((group) => {
       const stats: StatRow[] = group.keys
-        .filter(
-          ({ key }) =>
-            raw.home[key] !== undefined || raw.away[key] !== undefined
-        )
-        .map(({ key, label }) => ({
-          label,
-          home: raw.home[key] ?? "0",
-          away: raw.away[key] ?? "0",
-          homeNum: parseNum(raw.home[key]),
-          awayNum: parseNum(raw.away[key]),
-        }));
+        .filter(({ key }) => {
+          const lowerKey = key.toLowerCase();
+          return (
+            raw.home[key] !== undefined ||
+            raw.away[key] !== undefined ||
+            raw.home[lowerKey] !== undefined ||
+            raw.away[lowerKey] !== undefined
+          );
+        })
+        .map(({ key, label }) => {
+          const lowerKey = key.toLowerCase();
+          const homeVal = raw.home[key] ?? raw.home[lowerKey] ?? "0";
+          const awayVal = raw.away[key] ?? raw.away[lowerKey] ?? "0";
+          return {
+            label,
+            home: homeVal,
+            away: awayVal,
+            homeNum: parseNum(homeVal),
+            awayNum: parseNum(awayVal),
+          };
+        });
       return { name: group.name, stats };
     })
     .filter((g) => g.stats.length > 0);
+  
+  if (groups.length === 0) {
+    console.warn(`[MatchStats] No groups built for sport ${sport}. Raw keys:`, {
+      home: Object.keys(raw.home),
+      away: Object.keys(raw.away)
+    });
+  }
+  return groups;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -407,9 +423,15 @@ export default function MatchStats({ game, liveStats: passedLiveStats }: MatchSt
 
   // Update from live stats when available
   useEffect(() => {
-    if (liveStats) {
+    if (liveStats && liveStats.home && liveStats.away) {
+      console.log(`[MatchStats] Updating rawStats from liveStats:`, {
+        homeKeys: Object.keys(liveStats.home),
+        awayKeys: Object.keys(liveStats.away)
+      });
       setRawStats(liveStats as any);
       setIsLoading(false);
+    } else if (liveStats) {
+      console.warn(`[MatchStats] liveStats received but missing home/away:`, liveStats);
     }
   }, [liveStats]);
 
@@ -442,8 +464,8 @@ export default function MatchStats({ game, liveStats: passedLiveStats }: MatchSt
 
   if (hasError || !rawStats || !rawStats.home || !rawStats.away) return null;
 
-  const homePosRaw = rawStats.home["possessionPct"] ?? rawStats.home["possession"];
-  const awayPosRaw = rawStats.away["possessionPct"] ?? rawStats.away["possession"];
+  const homePosRaw = rawStats.home["possessionPct"] ?? rawStats.home["possessionpct"] ?? rawStats.home["possession"];
+  const awayPosRaw = rawStats.away["possessionPct"] ?? rawStats.away["possessionpct"] ?? rawStats.away["possession"];
   const homePos = parseNum(homePosRaw);
   const awayPos = parseNum(awayPosRaw);
   const hasPossession = homePos > 0 || awayPos > 0;

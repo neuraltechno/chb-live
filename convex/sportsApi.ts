@@ -490,7 +490,11 @@ export const fetchGameStats = action({
           if (side) {
             side.teamId = String(team.team?.id || "");
             team.statistics?.forEach((stat: any) => {
-              side[stat.name] = stat.displayValue;
+              if (stat.name) {
+                // Store both the original name and lowercased name for compatibility
+                side[stat.name] = stat.displayValue;
+                side[stat.name.toLowerCase()] = stat.displayValue;
+              }
             });
           }
         });

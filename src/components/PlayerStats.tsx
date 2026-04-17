@@ -43,14 +43,14 @@ function TeamScoreAfl({ team, gameExternalId, leagueId, gameId, liveStats }: { t
     }
   }
 
-  if (!stats || !side) return <span>{team.score}</span>;
+  if (!stats || !side) return <span className="text-[14px]">{team.score}</span>;
 
   const sideData = stats[side] || {};
   const goals = sideData.goals || "0";
   const behinds = sideData.behinds || "0";
   const score = sideData.score || team.score;
 
-  return <span>{goals}.{behinds}.{score}</span>;
+  return <span className="text-[13px]">{goals}.{behinds}.{score}</span>;
 }
 
 interface PlayerStatsProps {
